@@ -1,0 +1,11 @@
+LICENSE
+MANIFEST.in
+README.md
+setup.cfg
+setup.py
+wolf_ism8/__init__.py
+wolf_ism8/ism8.py
+wolf_ism8.egg-info/PKG-INFO
+wolf_ism8.egg-info/SOURCES.txt
+wolf_ism8.egg-info/dependency_links.txt
+wolf_ism8.egg-info/top_level.txt

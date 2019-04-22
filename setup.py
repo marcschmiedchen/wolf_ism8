@@ -1,17 +1,17 @@
+""" setup for creating pypi package """
 import setuptools
 
-with open("README.md", "r") as fh:
+with open("README.md") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="wolf_ism8",
-    version="0.33",
-    author="wolfwiz",
-    author_email="timtimmy671@yahoo.de",
+    version="1.1",
+    author="marcschmiedchen",
+    author_email="marc.schmiedchen@protonmail.com",
     description="Get data from wolf heating system via ISM8",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/wolfwiz/wolf_ism8",
     packages=["wolf_ism8"],
     classifiers=[
         "Programming Language :: Python :: 3",
