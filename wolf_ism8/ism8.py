@@ -479,7 +479,8 @@ class Ism8(asyncio.Protocol):
                                             "DPT_Tempd",
                                             "DPT_Value_Pres",
                                             "DPT_Power",
-                                            "DPT_Value_Volume_Flow")):
+                                            "DPT_Value_Volume_Flow",
+                                            "DPT_ActiveEnergy")):
             _sign = (result & 0b1000000000000000) >> 15
             _exponent = (result & 0b0111100000000000) >> 11
             _mantisse = result & 0b0000011111111111
