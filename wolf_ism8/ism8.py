@@ -179,7 +179,7 @@ class Ism8(asyncio.Protocol):
         143: ('SM', 'Status Ausgang A2', 'DPT_Enable', False, ''),
         144: ('SM', 'Status Ausgang A3', 'DPT_Enable', False, ''),
         145: ('SM', 'Status Ausgang A4', 'DPT_Enable', False, ''),
-        146: ('SM', 'Durchfluss', 'DPT_Value_Volme_Flow', False, 'l/h'),
+        146: ('SM', 'Durchfluss', 'DPT_Value_Volume_Flow', False, 'l/h'),
         147: ('SM', 'aktuelle Leistung', 'DPT_Power', False, 'W'),
         148: ('CWL', 'Stoerung', 'DPT_Switch', False, ''),
         149: ('CWL', 'Programm', 'DPT_DHWMode', True, ''),
@@ -231,8 +231,8 @@ class Ism8(asyncio.Protocol):
         192: ('CWL', 'Filterwarnung aktiv', 'DPT_Switch', False, '-'),
         193: ('CWL', 'Filterwarnung zuruecksetzen', 'DPT_Switch', True, '-'),
         194: ('BM1', '1x Warmwasserladung (gobal)', 'DPT_Switch', True, '-'),
-        195: ('SM1', 'Tagesertrag', 'DPT_ActiveEnergy', False, 'Wh'),
-        196: ('SM1', 'Gesamtertrag', 'DPT_ActiveEnergy_kWh', False, 'kWh'),
+        195: ('SM', 'Tagesertrag', 'DPT_ActiveEnergy', False, 'Wh'),
+        196: ('SM', 'Gesamtertrag', 'DPT_ActiveEnergy_kWh', False, 'kWh'),
         197: ('HG1', 'Abgastemperatur', 'DPT_Value_Temp', False, 'C'),
         198: ('HG1', 'Leistungsvorgabe', 'DPT_Scaling', True, '%'),
         199: ('HG1', 'Kesseltemperaturvorgabe', 'DPT_Value_Temp', True, 'C'),
@@ -293,7 +293,6 @@ class Ism8(asyncio.Protocol):
         self._transport = None
         self._connected = False
         self._LOGGER = logging.getLogger(__name__)
-        self._LOGGER.setLevel(logging.DEBUG)
 
     def factory(self):
         """
@@ -479,8 +478,8 @@ class Ism8(asyncio.Protocol):
                                             "DPT_Tempd",
                                             "DPT_Value_Pres",
                                             "DPT_Power",
-                                            "DPT_Value_Volume_Flow",
-                                            "DPT_ActiveEnergy")):
+                                            "DPT_Value_Volume_Flow"
+                                            )):
             _sign = (result & 0b1000000000000000) >> 15
             _exponent = (result & 0b0111100000000000) >> 11
             _mantisse = result & 0b0000011111111111
@@ -491,6 +490,10 @@ class Ism8(asyncio.Protocol):
                 _mantisse = -(~(_mantisse - 1) & 0x07ff)
             self._dp_values.update(
                 {dp_id: (0.01 * (2 ** _exponent) * _mantisse)})
+        elif (length == 4) and (dp_type in ("DPT_ActiveEnergy",
+                                            "DPT_ActiveEnergy_kWh"
+                                            )):
+            self._dp_values.update({dp_id: result})
         else:
             self._LOGGER.error('datatype not implemented: %s ', dp_type)
             return
@@ -515,8 +518,6 @@ class Ism8(asyncio.Protocol):
         Returns sensor value from private array of sensor-readings
         """
         if dp_id in self._dp_values.keys():
-            self._LOGGER.debug('read sensor no %s called (%s)',
-                               dp_id, self._dp_values[dp_id])
             return self._dp_values[dp_id]
         else:
             return None
