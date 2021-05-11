@@ -180,7 +180,7 @@ class Ism8(asyncio.Protocol):
         144: ('SM', 'Status Ausgang A3', 'DPT_Enable', False, ''),
         145: ('SM', 'Status Ausgang A4', 'DPT_Enable', False, ''),
         146: ('SM', 'Durchfluss', 'DPT_Value_Volume_Flow', False, 'l/h'),
-        147: ('SM', 'aktuelle Leistung', 'DPT_Power', False, 'W'),
+        147: ('SM', 'aktuelle Leistung', 'DPT_Power', False, 'kW'),
         148: ('CWL', 'Stoerung', 'DPT_Switch', False, ''),
         149: ('CWL', 'Programm', 'DPT_DHWMode', True, ''),
         150: ('CWL', 'Zeitprogramm 1', 'DPT_Switch', True, ''),
