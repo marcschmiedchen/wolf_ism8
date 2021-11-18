@@ -288,8 +288,7 @@ class Ism8(asyncio.Protocol):
 
     def __init__(self):
         self._dp_values = {}
-        # all the datapoint-values (IDs matching the list above) are stored
-        # here
+        # the datapoint-values (IDs matching the list above) are stored here
         self._transport = None
         self._connected = False
         self._LOGGER = logging.getLogger(__name__)
@@ -494,6 +493,8 @@ class Ism8(asyncio.Protocol):
                                             "DPT_ActiveEnergy_kWh"
                                             )):
             self._dp_values.update({dp_id: result})
+        elif (length == 4) and (dp_type == "DPT_FlowRate_m3/h"):
+            self._dp_values.update({dp_id: result*0.0001})
         else:
             self._LOGGER.error('datatype not implemented: %s ', dp_type)
             return
