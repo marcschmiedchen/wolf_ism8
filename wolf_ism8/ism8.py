@@ -14,6 +14,7 @@ class Ism8(asyncio.Protocol):
     ISM_HEADER = b'\x06\x20\xf0\x80'
     ISM_CONN_HEADER = b'\x04\x00\x00\x00'
     ISM_ACK = b'\xF0\x86\x00\x00\x00\x00\x00'
+    ISM_REQ_DP =b'\x06\x20\xF0\x80\x00\x16\x04\x00\x00\x00\xF0\xD0'
     ISM_POLL = b'\x06\x20\xF0\x80\x00\x16\x04\x00\x00\x00\xF0\xD0'
     # constant byte arrays for creating ISM8 network messages
 
@@ -300,12 +301,19 @@ class Ism8(asyncio.Protocol):
         """
         return self
 
+    def request_all_datapoints(self):
+        """send 'request all datapoints' to ISM8 """
+        req_msg = bytearray(Ism8.ISM_REQ_DP)
+        self._LOGGER.debug('Sending REQ_DP: %s ', req_msg)
+        self._transport.write(req_msg)
+
     def connection_made(self, transport):
         """ is called as soon as an ISM8 connects to server """
         _peername = transport.get_extra_info('peername')
         self._LOGGER.info("Connection from ISM8: %s", _peername)
         self._transport = transport
         self._connected = True
+        self.request_all_datapoints()
 
     def data_received(self, data):
         """ is called whenever data is ready """
