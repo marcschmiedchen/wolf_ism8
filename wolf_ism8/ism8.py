@@ -247,45 +247,115 @@ class Ism8(asyncio.Protocol):
         207: ('HG4', 'Leistungsvorgabe', 'DPT_Scaling', True, '%'),
         208: ('HG4', 'Kesseltemperaturvorgabe', 'DPT_Value_Temp', True, 'C'),
         209: ('KM', 'Gesamtmodulationsgradvorgabe', 'DPT_Scaling', True, '%'),
-        210: ('KM', 'Sammlertemperaturvorgabe', 'DPT_Value_Temp', True, 'C')
+        210: ('KM', 'Sammlertemperaturvorgabe', 'DPT_Value_Temp', True, 'C'),
+        354: ('CWL', 'undokumentiert_354', 'DPT_unknown', False, ''),
+        355: ('CWL', 'undokumentiert_355', 'DPT_unknown', False, ''),
+        356: ('CWL', 'undokumentiert_356', 'DPT_unknown', False, ''),
+        357: ('CWL', 'undokumentiert_357', 'DPT_unknown', False, ''),
+        358: ('CWL', 'undokumentiert_358', 'DPT_unknown', False, ''),
+    }
+
+    HVACModes = {
+        0: 'Auto',
+        1: 'Comfort',
+        2: 'Standby',
+        3: 'Economy',
+        4: 'Building Protection'
+    }
+    
+    HVACContrModes = {
+        0: 'Auto',
+        1: 'Heat',
+        2: 'Morning Warmup',
+        3: 'Cool',
+        4: 'Night Purge',
+        5: 'Precool',
+        6: 'Off',
+        7: 'Test',
+        8: 'Emergency Heat',
+        9: 'Fan Only',
+        10:'Free Cool',
+        11:'Ice',
+        12:'Maximum Heating Mode',
+        13:'Economic Heat/Cool Mode',
+        14:'Dehumidification',
+        15:'Calibration Mode',
+        16:'Emergency Cool Mode',
+        17:'Emergency Steam Mode',
+        20:'NoDem'
+    }
+
+    DHWModes = {
+        0: 'Auto',
+        1: 'LegioProtect',
+        2: 'Normal',
+        3: 'Reduced',
+        4: 'Off'
     }
 
     @staticmethod
     def get_device(dp_id):
-        """ returns sensor value from private array of sensor-readings """
-        if dp_id in Ism8.DATAPOINTS.keys():
-            return Ism8.DATAPOINTS[dp_id][Ism8.DP_DEVICE]
-        else:
-            return None
+        """ returns device name from private array of sensor-readings """
+        return Ism8.DATAPOINTS.get(dp_id, ['','','','',''])[Ism8.DP_DEVICE]
 
     @staticmethod
     def get_name(dp_id):
-        """ returns sensor value from private array of sensor-readings """
-        if dp_id in Ism8.DATAPOINTS.keys():
-            return Ism8.DATAPOINTS[dp_id][Ism8.DP_NAME]
-        else:
-            return None
+        """ returns sensor name from private array of sensor-readings """
+        return Ism8.DATAPOINTS.get(dp_id, ['','','','',''])[Ism8.DP_NAME]
 
     @staticmethod
     def get_type(dp_id):
-        """ returns sensor value from private array of sensor-readings """
-        if dp_id in Ism8.DATAPOINTS.keys():
-            return Ism8.DATAPOINTS[dp_id][Ism8.DP_TYPE]
-        else:
-            return None
+        """ returns sensor type from private array of sensor-readings """
+        return Ism8.DATAPOINTS.get(dp_id, ['','','','',''])[Ism8.DP_TYPE]
 
     @staticmethod
     def get_unit(dp_id):
-        """ returns sensor value from private array of sensor-readings """
-        if dp_id in Ism8.DATAPOINTS.keys():
-            return Ism8.DATAPOINTS[dp_id][Ism8.DP_UNIT]
-        else:
-            return None
+        """ returns sensor unit from private array of sensor-readings """
+        return Ism8.DATAPOINTS.get(dp_id, ['','','','',''])[Ism8.DP_UNIT]
 
     @staticmethod
     def get_all_sensors():
         """ returns pointer all possible values of ISM8 datapoints """
         return Ism8.DATAPOINTS
+
+    @staticmethod
+    def decode_HVACMode(input):
+       return Ism8.HVACModes.get(input, 'unbekannter Modus')
+
+    @staticmethod
+    def decode_Scaling(input):
+        # take byte value and multiply by 100/255
+        return (100 / 255 * input)
+
+    @staticmethod
+    def decode_DHWMode(input):
+        return Ism8.DHWModes.get(input, 'unbekannter Modus')
+    
+    @staticmethod
+    def decode_HVACContrMode(input):
+        return Ism8.HVACContrModes.get(input, 'unbekannter Modus')
+
+    @staticmethod
+    def decode_Bool(input):
+        # take 1st bit and cast to Bool
+        return bool(input & 1)
+        
+    @staticmethod
+    def decode_Int(input):
+        return int(input)
+
+    @staticmethod
+    def decode_ScaledInt(input):
+        return float(0.0001*input)
+
+    @staticmethod
+    def decode_Float(input):
+        _sign = (input & 0b1000000000000000) >> 15
+        _exponent = (input & 0b0111100000000000) >> 11
+        _mantisse = input & 0b0000011111111111
+        if _sign == 1:
+            _mantisse = -(~(_mantisse - 1) & 0x07ff)
+        return float(0.01 * (2 ** _exponent) * _mantisse)
 
     def __init__(self):
         self._dp_values = {}
@@ -381,12 +451,12 @@ class Ism8(asyncio.Protocol):
             dp_raw_value = bytearray(msg[i + 10:i + 10 + dp_length])
             self._LOGGER.debug('Processing DP-ID %s, %s bytes: message: %s',
                                dp_id, dp_length, dp_raw_value)
-            self.decode_datapoint(dp_id, dp_length, dp_raw_value)
+            self.extract_datapoint(dp_id, dp_length, dp_raw_value)
             # now advance byte counter and datapoint counter
             dp_nbr += 1
             i = i + 10 + dp_length
 
-    def decode_datapoint(self, dp_id, length, raw_bytes):
+    def extract_datapoint(self, dp_id, length, raw_bytes):
         """
         decodes a single value according to API;
         receives raw bytes from network and
@@ -396,123 +466,50 @@ class Ism8(asyncio.Protocol):
         for single_byte in raw_bytes:
             result = result * 256 + int(single_byte)
 
-        if dp_id not in Ism8.DATAPOINTS:
+        dp_type = 'DPT_unknown'
+        if dp_id in Ism8.DATAPOINTS:
+            dp_type = Ism8.DATAPOINTS[dp_id][Ism8.DP_TYPE]
+        else:
             self._LOGGER.error("unknown datapoint: %s, data:%s",
                                dp_id, result)
-            return
+            
+        if dp_type in ("DPT_Switch", "DPT_Bool", "DPT_Enable", "DPT_OpenClose"):
+            self._dp_values.update({dp_id: Ism8.decode_Bool(result)})
 
-        dp_type = Ism8.DATAPOINTS[dp_id][Ism8.DP_TYPE]
+        elif (dp_type == "DPT_HVACMode"):
+            self._dp_values.update({dp_id: Ism8.decode_HVACMode(result)})
 
-        if (length == 1) and dp_type in ("DPT_Switch",
-                                         "DPT_Bool",
-                                         "DPT_Enable",
-                                         "DPT_OpenClose"):
-            # take 1st bit and cast to Bool
-            self._dp_values.update({dp_id: bool(result & 1)})
+        elif (dp_type == "DPT_Scaling"):
+            self._dp_values.update({dp_id: Ism8.decode_Scaling(result)})
 
-        elif (length == 1) and (dp_type == "DPT_HVACMode"):
-            # translate values to clear status-text
-            if result == 0:
-                self._dp_values.update({dp_id: 'Auto'})
-            elif result == 1:
-                self._dp_values.update({dp_id: 'Comfort'})
-            elif result == 2:
-                self._dp_values.update({dp_id: 'Standby'})
-            elif result == 3:
-                self._dp_values.update({dp_id: 'Economy'})
-            elif result == 4:
-                self._dp_values.update({dp_id: 'Building Protection'})
+        elif (dp_type == "DPT_DHWMode"):
+            self._dp_values.update({dp_id: Ism8.decode_DHWMode(result)})
 
-        elif (length == 1) and (dp_type == "DPT_Scaling"):
-            # take byte value and multiply by 100/255
-            self._dp_values.update({dp_id: 100 / 255 * result})
+        elif (dp_type == "DPT_HVACContrMode"):
+            self._dp_values.update({dp_id: Ism8.decode_HVACContrMode(result)})
 
-        elif (length == 1) and (dp_type == "DPT_DHWMode"):
-            if result == 0:
-                self._dp_values.update({dp_id: 'Auto'})
-            elif result == 1:
-                self._dp_values.update({dp_id: 'LegioProtect'})
-            elif result == 2:
-                self._dp_values.update({dp_id: 'Normal'})
-            elif result == 3:
-                self._dp_values.update({dp_id: 'Reduced'})
-            elif result == 4:
-                self._dp_values.update({dp_id: 'Off'})
+        elif (dp_type in ("DPT_Value_Temp",
+                          "DPT_Value_Tempd",
+                          "DPT_Tempd",
+                          "DPT_Value_Pres",
+                          "DPT_Power",
+                          "DPT_Value_Volume_Flow"
+                          )):
+            self._dp_values.update({dp_id: Ism8.decode_Float(result)})
+            
+        elif (dp_type in ("DPT_ActiveEnergy", "DPT_ActiveEnergy_kWh" )):
+            self._dp_values.update({dp_id: Ism8.decode_Int(result)})
+            
+        elif (dp_type == "DPT_FlowRate_m3/h"):
+            self._dp_values.update({dp_id: Ism8.decode_ScaledInt(result)})
 
-        elif (length == 1) and (dp_type == "DPT_HVACContrMode"):
-            # translate values to clear status-text
-            if result == 0:
-                self._dp_values.update({dp_id: 'Auto'})
-            elif result == 1:
-                self._dp_values.update({dp_id: 'Heat'})
-            elif result == 2:
-                self._dp_values.update({dp_id: 'Morning Warmup'})
-            elif result == 3:
-                self._dp_values.update({dp_id: 'Cool'})
-            elif result == 4:
-                self._dp_values.update({dp_id: 'Night Purge'})
-            elif result == 5:
-                self._dp_values.update({dp_id: 'Precool'})
-            elif result == 6:
-                self._dp_values.update({dp_id: 'Off'})
-            elif result == 7:
-                self._dp_values.update({dp_id: 'Test'})
-            elif result == 8:
-                self._dp_values.update({dp_id: 'Emergency Heat'})
-            elif result == 9:
-                self._dp_values.update({dp_id: 'Fan Only'})
-            elif result == 10:
-                self._dp_values.update({dp_id: 'Free Cool'})
-            elif result == 11:
-                self._dp_values.update({dp_id: 'Ice'})
-            elif result == 12:
-                self._dp_values.update({dp_id: 'Maximum Heating Mode'})
-            elif result == 13:
-                self._dp_values.update({dp_id: 'Economic Heat/Cool Mode'})
-            elif result == 14:
-                self._dp_values.update({dp_id: 'Dehumidification'})
-            elif result == 15:
-                self._dp_values.update({dp_id: 'Calibration Mode'})
-            elif result == 16:
-                self._dp_values.update({dp_id: 'Emergency Cool Mode'})
-            elif result == 17:
-                self._dp_values.update({dp_id: 'Emergency Steam Mode'})
-            elif result == 20:
-                self._dp_values.update({dp_id: 'NoDem'})
-
-        elif (length == 2) and (dp_type in ("DPT_Value_Temp",
-                                            "DPT_Value_Tempd",
-                                            "DPT_Tempd",
-                                            "DPT_Value_Pres",
-                                            "DPT_Power",
-                                            "DPT_Value_Volume_Flow"
-                                            )):
-            _sign = (result & 0b1000000000000000) >> 15
-            _exponent = (result & 0b0111100000000000) >> 11
-            _mantisse = result & 0b0000011111111111
-            self._LOGGER.debug(
-                'binary format {0:b} -> s:{1:b} ,  m:{2:b} , e:{3:b}'
-                .format(result, _sign, _mantisse, _exponent))
-            if _sign == 1:
-                _mantisse = -(~(_mantisse - 1) & 0x07ff)
-            self._dp_values.update(
-                {dp_id: (0.01 * (2 ** _exponent) * _mantisse)})
-        elif (length == 4) and (dp_type in ("DPT_ActiveEnergy",
-                                            "DPT_ActiveEnergy_kWh"
-                                            )):
-            self._dp_values.update({dp_id: result})
-        elif (length == 4) and (dp_type == "DPT_FlowRate_m3/h"):
-            self._dp_values.update({dp_id: result*0.0001})
         else:
-            self._LOGGER.error('datatype not implemented: %s ', dp_type)
-            return
-        if dp_id in self._dp_values.keys():
-            self._LOGGER.debug('decoded DP %s : %s = %s\n',
-                               dp_id, Ism8.DATAPOINTS[dp_id],
+            self._LOGGER.error('datatype unknown, using INT: %s ', dp_type)
+            self._dp_values.update({dp_id: Ism8.decode_Int(result)})
+
+        self._LOGGER.debug('decoded DP %s : %s = %s\n',
+                               dp_id, Ism8.DATAPOINTS.get(dp_id,'unknown DP'),
                                self._dp_values[dp_id])
-        else:
-            self._LOGGER.error('could not decode DP %s : %s\n',
-                               dp_id, Ism8.DATAPOINTS[dp_id])
 
     def connection_lost(self, exc):
         """
@@ -534,14 +531,13 @@ class Ism8(asyncio.Protocol):
 
 if __name__ == "__main__":
 
+    logging.basicConfig(level=logging.DEBUG)
     _LOGGER = logging.getLogger(__name__)
-    logging.basicConfig()
-    _LOGGER.setLevel(logging.DEBUG)
-
+    
     # for testing purposes only, relies on debug output
     myProtocol = Ism8()
     for keys, values in myProtocol.get_all_sensors().items():
-        print("%s:  %s\n" % (keys, values))
+        _LOGGER.debug("%s:  %s" % (keys, values))
 
     _eventloop = asyncio.get_event_loop()
     coro = _eventloop.create_server(myProtocol.factory, '', 12004)
