@@ -1,7 +1,7 @@
 name: Publish package to (Test-)PyPI
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
   release:
     types: [published, prereleased]
   
