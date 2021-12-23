@@ -17,13 +17,10 @@ jobs:
         with:
           python-version: 3.8
       - name: Install wheel
-        run: 
+        run: |
           echo "running python setup"
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade setuptools
-          python -m pip install --upgrade pandoc
-          python -m pip install --upgrade pypandoc
-          pip install -r requirements.txt
+          pip install --upgrade pip
+          pip install --upgrade setuptools
           pip install wheel
       - name: Build
         run: python3 setup.py sdist bdist_wheel
