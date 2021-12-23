@@ -25,10 +25,9 @@ jobs:
       - name: Build
         run: python3 setup.py sdist bdist_wheel
       - name: Publish release to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@master
         with:
           verbose: true
-          user:  marcschmiedchen
           password: ${{ secrets.TESTPYPI_TOKEN }}
           repository_url: https://test.pypi.org/legacy/
 
