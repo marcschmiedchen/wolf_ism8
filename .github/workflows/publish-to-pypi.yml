@@ -15,11 +15,16 @@ jobs:
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: 3.7
+          python-version: 3.8
       - name: Install wheel
         run: 
           echo "running python setup"
-          pip3 install wheel
+          python -m pip install --upgrade pip
+          python -m pip install --upgrade setuptools
+          python -m pip install --upgrade pandoc
+          python -m pip install --upgrade pypandoc
+          pip install -r requirements.txt
+          pip install wheel
       - name: Build
         run: python3 setup.py sdist bdist_wheel
       - name: Publish release to PyPI
