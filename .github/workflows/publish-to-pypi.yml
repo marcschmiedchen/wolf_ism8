@@ -17,8 +17,9 @@ jobs:
         with:
           python-version: 3.8
       - name: Install wheel
-        run: echo "running python setup"
-        run: pip install wheel
+        run: 
+          echo "running python setup"
+          pip install wheel
       - name: Build
         run: python3 setup.py sdist bdist_wheel
       - name: Publish release to PyPI
