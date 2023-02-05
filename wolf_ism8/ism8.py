@@ -179,13 +179,6 @@ class Ism8(asyncio.Protocol):
         self._transport = None
         self._connected = False
 
-    def factory(self):
-        """
-        returns reference to itself for using in protocol_factory with
-        create_server
-        """
-        return self
-
     def request_all_datapoints(self):
         """send 'request all datapoints' to ISM8"""
         req_msg = bytearray(ISM_REQ_DP_MSG)
@@ -447,15 +440,14 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     #log = logging.getLogger(__name__)
 
-    # for testing purposes only, print all datapoints 
-    myProtocol = Ism8()
-    for keys, values in myProtocol.get_all_sensors().items():
+    # for informational purposes only, print all datapoints 
+    for keys, values in Ism8.get_all_sensors().items():
         print("%s:  %s" % (keys, values))
     
     #setup eventloop and start listening on standard ISM port
     _eventloop = asyncio.new_event_loop()
     asyncio.set_event_loop(_eventloop)
-    coro = _eventloop.create_server(myProtocol.factory, "", 12004)
+    coro = _eventloop.create_server(Ism8, "", 12004)
     _server = _eventloop.run_until_complete(coro)
     
     # Serve and print logs until Ctrl+C is pressed
