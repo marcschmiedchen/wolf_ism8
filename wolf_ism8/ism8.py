@@ -18,47 +18,10 @@ class Ism8(asyncio.Protocol):
     log = logging.getLogger(__name__)
 
     @staticmethod
-    def get_device(dp_id):
-        """returns device name from private array of sensor-readings"""
-        return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_DEVICENAME]
-
-    @staticmethod
-    def get_name(dp_id):
-        """returns sensor name from private array of sensor-readings"""
-        return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_NAME]
-
-    @staticmethod
-    def get_type(dp_id):
-        """returns sensor type from private array of sensor-readings"""
-        return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
-
-    @staticmethod
-    def is_writable(dp_id) -> bool:
-        """returns sensor type from private array of sensor-readings"""
-        return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_RW_FLAG]
-
-    @staticmethod
-    def get_value_area(dp_id) -> Optional[list[Any]]:
-        """returns sensor type from private array of sensor-readings"""
-        return DP_VALUES_ALLOWED.get(dp_id, ["", ""])[IX_VALUE_AREA]
-
-    @staticmethod
-    def get_min_value(dp_id: int) -> Any:
-        """returns min value allowed for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
-        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_MIN]
-
-    @staticmethod
-    def get_max_value(dp_id: int) -> Any:
-        """returns min value allowed for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
-        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_MAX]
-
-    @staticmethod
     def get_datatype(dp_id: int) -> Any:
         """returns python datatype allowed for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
-        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_TYPE]
+        ism_datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
+        return DATATYPES.get(ism_datatype, ["", "", "", "", ""])[DT_PYTHONTYPE]
 
     @staticmethod
     def get_step_value(dp_id: int) -> Any:
@@ -91,12 +54,12 @@ class Ism8(asyncio.Protocol):
 
     @staticmethod
     def decode_Scaling(input: int) -> float:
-        # take byte value and multiply by 100/255
+        # scale by 100/255 according to Docs
         return 100 / 255 * input
 
     @staticmethod
     def encode_Scaling(input: float) -> bytearray:
-        # take byte value and multiply by 100/255
+        # scale by 100/255 according to Docs
         return bytearray([round(input / (100 / 255))])
 
     @staticmethod
@@ -182,13 +145,13 @@ class Ism8(asyncio.Protocol):
     def request_all_datapoints(self):
         """send 'request all datapoints' to ISM8"""
         req_msg = bytearray(ISM_REQ_DP_MSG)
-        Ism8.logdebug("Sending REQ_DP: %s ", self.__encode_bytes(req_msg))
+        Ism8.log.debug("Sending REQ_DP: %s ", self.__encode_bytes(req_msg))
         self._transport.write(req_msg)
 
     def connection_made(self, transport):
         """is called as soon as an ISM8 connects to server"""
         _peername = transport.get_extra_info("peername")
-        Ism8.loginfo("Connection from ISM8: %s", _peername)
+        Ism8.log.info("Connection from ISM8: %s", _peername)
         self._transport = transport
         self._connected = True
 
@@ -196,7 +159,7 @@ class Ism8(asyncio.Protocol):
         """is called whenever data is ready"""
         _header_ptr = 0
         msg_length = 0
-        Ism8.logdebug("Raw data received: %s", self.__encode_bytes(data))
+        Ism8.log.debug("Raw data received: %s", self.__encode_bytes(data))
         while _header_ptr < len(data):
             _header_ptr = data.find(ISM_HEADER, _header_ptr)
             if _header_ptr >= 0:
@@ -212,8 +175,8 @@ class Ism8(asyncio.Protocol):
             # buffer is larger => than msg: process 1 message,
             # then continue loop
             if len(data) < _header_ptr + msg_length:
-                Ism8.logdebug("Buffer shorter than expected / broken Message.")
-                Ism8.logdebug("Discarding: %s ", data[_header_ptr:])
+                Ism8.log.debug("Buffer shorter than expected / broken Message.")
+                Ism8.log.debug("Discarding: %s ", data[_header_ptr:])
                 # setting Ptr to end of data will end loop
                 _header_ptr = len(data)
             else:
@@ -222,7 +185,7 @@ class Ism8(asyncio.Protocol):
                 ack_msg = bytearray(ISM_ACK_DP_MSG)
                 ack_msg[12] = data[_header_ptr + 12]
                 ack_msg[13] = data[_header_ptr + 13]
-                Ism8.logdebug("Sending ACK: %s ", self.__encode_bytes(ack_msg))
+                Ism8.log.debug("Sending ACK: %s ", self.__encode_bytes(ack_msg))
                 self._transport.write(ack_msg)
                 # process message without header (first 10 bytes)
                 self.process_msg(data[_header_ptr + 10 : _header_ptr + msg_length])
@@ -235,20 +198,20 @@ class Ism8(asyncio.Protocol):
         Processes received datagram(s) according to ISM8 API specification
         into message length, command, values delivered
         """
+        # number of datapoints in message are coded into bytes 4 and 5 
         max_dp = msg[4] * 256 + msg[5]
-        # number of DATAPOINTS are coded into bytes 4 and 5 of message
+        # i keeps track of the bytes 
         i = 0
-        # byte counter
-        dp_nbr = 1
-        # datapoint counter
-        while dp_nbr <= max_dp:
-            Ism8.logdebug("DP %d / %d in datagram:", dp_nbr, max_dp)
+        # loop over datapoint counter, until all dps are processed
+        dp_ctr = 1
+        while dp_ctr <= max_dp:
+            Ism8.log.debug("DP %d / %d in datagram:", dp_ctr, max_dp)
             dp_id = msg[i + 6] * 256 + msg[i + 7]
             # dp_command = msg[i + 8]
             # to be implemented for writing values to ISM8
             dp_length = msg[i + 9]
             dp_raw_value = bytearray(msg[i + 10 : i + 10 + dp_length])
-            Ism8.logdebug(
+            Ism8.log.debug(
                 "Processing DP-ID %s, %s bytes: message: %s",
                 dp_id,
                 dp_length,
@@ -256,21 +219,21 @@ class Ism8(asyncio.Protocol):
             )
             self.extract_datapoint(dp_id, dp_length, dp_raw_value)
             # now advance byte counter and datapoint counter
-            dp_nbr += 1
+            dp_ctr += 1
             i = i + 10 + dp_length
 
-    def __validate_value_for_dp(self, dp_id: int, value: Any) -> bool:
+    def validate_dp_value(self, dp_id: int, value: Any) -> bool:
         """
-        validate if dp with given value
+        validate if given value is valid for the datapoint number before sending to ISM 
         """
         if dp_id not in DATAPOINTS:
-            Ism8.logerror("unknown datapoint: %s, value: %s", dp_id, value)
+            Ism8.log.error("unknown datapoint: %s, value: %s", dp_id, value)
             return False
         if not DATAPOINTS[dp_id][IX_RW_FLAG]:
-            Ism8.logerror("datapoint %s not writable", dp_id)
+            Ism8.log.error("datapoint %s not writable", dp_id)
             return False
-        if isinstance(value, self.get_datatype(dp_id)):
-            Ism8.logerror(
+        if not isinstance(value, self.get_datatype(dp_id)):
+            Ism8.log.error(
                 "value has invalid datatype %s, valid datatype is %s",
                 type(value),
                 self.get_datatype(dp_id),
@@ -279,7 +242,7 @@ class Ism8(asyncio.Protocol):
 
         if type(value) != str:
             if value < self.get_min_value(dp_id) or self.get_max_value(dp_id) < value:
-                Ism8.logerror(
+                Ism8.log.error(
                     "value %d is out of range(%d < n < %d)",
                     value,
                     self.get_min_value(dp_id),
@@ -294,7 +257,7 @@ class Ism8(asyncio.Protocol):
             return
 
         if not self._connected or self._transport is None:
-            Ism8.logerror("No Connection to ISM8 Module")
+            Ism8.log.error("No Connection to ISM8 Module")
             return
         dp_type = DATAPOINTS[dp_id][IX_TYPE]
         encoded_value = 0b0
@@ -321,9 +284,9 @@ class Ism8(asyncio.Protocol):
         elif dp_type in ("DPT_ActiveEnergy", "DPT_ActiveEnergy_kWh"):
             encoded_value = Ism8.encode_Int(value)
         else:
-            Ism8.logerror("datatype unknown, using INT: %s ", dp_type)
+            Ism8.log.error("datatype unknown, using INT: %s ", dp_type)
             encoded_value = Ism8.encode_Int(value)
-        Ism8.logdebug("encoded DP %s : %s = %s\n", dp_id, value, encoded_value)
+        Ism8.log.debug("encoded DP %s : %s = %s\n", dp_id, value, encoded_value)
 
         # prepare frame with obj info
         update_msg = bytearray()
@@ -342,7 +305,7 @@ class Ism8(asyncio.Protocol):
         update_msg[5] = frame_size[1]
 
         # send message
-        Ism8.logdebug(
+        Ism8.log.debug(
             "send message dp %d from val %s to %s\n%s",
             dp_id,
             self.read(dp_id),
@@ -365,7 +328,7 @@ class Ism8(asyncio.Protocol):
         if dp_id in DATAPOINTS:
             dp_type = DATAPOINTS[dp_id][IX_TYPE]
         else:
-            Ism8.logerror("unknown datapoint: %s, data:%s", dp_id, result)
+            Ism8.log.error("unknown datapoint: %s, data:%s", dp_id, result)
 
         if dp_type in ("DPT_Switch", "DPT_Bool", "DPT_Enable", "DPT_OpenClose"):
             self._dp_values.update({dp_id: Ism8.decode_Bool(result)})
@@ -396,10 +359,10 @@ class Ism8(asyncio.Protocol):
             self._dp_values.update({dp_id: Ism8.decode_Int(result)})
 
         else:
-            Ism8.logdebug("datatype unknown, using INT: %s ", dp_type)
+            Ism8.log.debug("datatype unknown, using INT: %s ", dp_type)
             self._dp_values.update({dp_id: Ism8.decode_Int(result)})
 
-        Ism8.logdebug(
+        Ism8.log.debug(
             "decoded DP %s : %s = %s\n",
             dp_id,
             DATAPOINTS.get(dp_id, "unknown DP"),
@@ -410,7 +373,7 @@ class Ism8(asyncio.Protocol):
         """
         Is called when connection ends. closes socket.
         """
-        Ism8.logdebug("ISM8 closed the connection.Stopping")
+        Ism8.log.debug("ISM8 closed the connection.Stopping")
         self._connected = False
         self._transport.close()
 

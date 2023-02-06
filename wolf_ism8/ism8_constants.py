@@ -364,7 +364,7 @@ DT_MIN = 0
 # index of min value allowed by datatype according to ism8 doc
 DT_MAX = 1
 # index of max value allowed by datatype according to ism8 doc
-DT_TYPE = 2
+DT_PYTHONTYPE = 2
 # index of python datatype
 DT_STEP = 3
 # index of step value according to ism8 doc
