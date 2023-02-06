@@ -58,8 +58,6 @@ class Ism8(asyncio.Protocol):
     # index of datapoint type (as described in Wolf API)
     IX_RW_FLAG = 3
     # index of R/W-flag (writing not implemented so far)
-    IX_VALUE_AREA = 5
-    # index of datapoint value area according to ism8 api, if applicable
 
     DATAPOINTS = {
         1: ("HG1", "Stoerung", "DPT_Switch", False),
@@ -271,7 +269,7 @@ class Ism8(asyncio.Protocol):
         209: ("KM", "Gesamtmodulationsgradvorgabe", "DPT_Scaling", True),
         210: ("KM", "Sammlertemperaturvorgabe", "DPT_Value_Temp", True),
         211: ("KM", "Betriebsart Heizen/Kuehlen", "DPT_Switch", False),
-        251: ("BM2", "Erkennung verfuegbare Heiz-/ Mischerkreise", "DPT_Value_1_Ucount", False),
+        251: ("BM2", "Erkennung Heiz-/ Mischerkreise", "DPT_Value_1_Ucount", False),
         346: ("CWL", "undokumentiert_346", "DPT_unknown", False),
         349: ("CWL", "undokumentiert_349", "DPT_unknown", False),
         351: ("CWL", "undokumentiert_351", "DPT_unknown", False),
@@ -281,20 +279,99 @@ class Ism8(asyncio.Protocol):
         354: ("CWL", "undokumentiert_354", "DPT_unknown", False),
         355: ("BM2", "Erkennung verfuegbarer Geraete 1", "DPT_Value_2_Ucount", False),
         356: ("BM2", "Erkennung verfuegbarer Geraete 2", "DPT_Value_2_Ucount", False),
-        357: ("BM2", "Unterscheidung Heizgeraetetyp (HG1)", "DPT_Value_1_Ucount", False),
-        358: ("BM2", "Erkennung vorhandener Warmwasserkreise", "DPT_Value_1_Ucount", False),
-        359: ("BM2", "Unterscheidung Heizgeraetetyp (HG2)", "DPT_Value_1_Ucount", False),
-        360: ("BM2", "Unterscheidung Heizgeraetetyp (HG3)", "DPT_Value_1_Ucount", False),
-        361: ("BM2", "Unterscheidung Heizgeraetetyp (HG4)", "DPT_Value_1_Ucount", False),
-        364: ("HG1", "Kesselsolltemperatur HG1 – lesen", "DPT_Value_Temp", False),
-        365: ("HG1", "Kesselsolltemperatur HG2 – lesen", "DPT_Value_Temp", False),
-        366: ("HG1", "Kesselsolltemperatur HG3 – lesen", "DPT_Value_Temp", False),
-        367: ("HG1", "Kesselsolltemperatur HG4 – lesen", "DPT_Value_Temp", False),
-        368: ("BM2", "Vorlaufsolltemperatur dir. HK – lesen", "DPT_Value_Temp", False),
-        369: ("BM2", "Mischersolltemperatur MK1 – lesen ", "DPT_Value_Temp", False),
-        370: ("BM2", "Mischersolltemperatur MK2 – lesen ", "DPT_Value_Temp", False),
-        371: ("BM2", "Mischersolltemperatur MK3 – lesen ", "DPT_Value_Temp", False),
+        357: (
+            "BM2",
+            "Unterscheidung Heizgeraetetyp (HG1)",
+            "DPT_Value_1_Ucount",
+            False,
+        ),
+        358: ("BM2", "Erkennung Warmwasserkreise", "DPT_Value_1_Ucount", False),
+        359: (
+            "BM2",
+            "Unterscheidung Heizgeraetetyp (HG2)",
+            "DPT_Value_1_Ucount",
+            False,
+        ),
+        360: (
+            "BM2",
+            "Unterscheidung Heizgeraetetyp (HG3)",
+            "DPT_Value_1_Ucount",
+            False,
+        ),
+        361: (
+            "BM2",
+            "Unterscheidung Heizgeraetetyp (HG4)",
+            "DPT_Value_1_Ucount",
+            False,
+        ),
+        364: ("HG1", "Kesselsolltemperatur HG1 - lesen", "DPT_Value_Temp", False),
+        365: ("HG1", "Kesselsolltemperatur HG2 - lesen", "DPT_Value_Temp", False),
+        366: ("HG1", "Kesselsolltemperatur HG3 - lesen", "DPT_Value_Temp", False),
+        367: ("HG1", "Kesselsolltemperatur HG4 - lesen", "DPT_Value_Temp", False),
+        368: ("BM2", "Vorlaufsolltemperatur dir. HK - lesen", "DPT_Value_Temp", False),
+        369: ("BM2", "Mischersolltemperatur MK1 - lesen ", "DPT_Value_Temp", False),
+        370: ("BM2", "Mischersolltemperatur MK2 - lesen ", "DPT_Value_Temp", False),
+        371: ("BM2", "Mischersolltemperatur MK3 - lesen ", "DPT_Value_Temp", False),
         372: ("SYM", "Zuletzt aktiver Stoercode", "DPT_Value_1_Ucount", False),
+    }
+
+    IX_VALUE_AREA = 1
+    # index of datapoint value area according to ism8 api, if applicable
+
+    DP_VALUES_ALLOWED = {
+        56: tuple(range(20, 81, 1)),
+        57: tuple(range(0, 4, 1)),
+        58: tuple(range(0, 5, 2)),
+        59: (0, 1),
+        60: (0, 1),
+        61: (0, 1),
+        62: (0, 1),
+        63: (0, 1),
+        64: (0, 1),
+        65: tuple(range(-40, 45, 5)),
+        66: tuple(range(0, 105, 5)),
+        69: tuple(range(20, 81, 1)),
+        70: tuple(range(0, 4, 1)),
+        71: tuple(range(0, 5, 2)),
+        72: (0, 1),
+        73: (0, 1),
+        74: (0, 1),
+        74: (0, 1),
+        75: (0, 1),
+        76: (0, 1),
+        77: (0, 1),
+        78: tuple([(i / 10) for i in range(-40, 45, 5)]),
+        79: tuple([(i / 10) for i in range(0, 105, 5)]),
+        82: tuple(range(20, 81, 1)),
+        83: tuple(range(0, 4, 1)),
+        84: tuple(range(0, 5, 2)),
+        85: (0, 1),
+        86: (0, 1),
+        87: (0, 1),
+        88: (0, 1),
+        89: (0, 1),
+        90: (0, 1),
+        91: tuple(range(-40, 45, 5)),
+        92: tuple(range(0, 105, 5)),
+        95: tuple(range(20, 81, 1)),
+        96: tuple(range(0, 4, 1)),
+        97: tuple(range(0, 5, 2)),
+        98: (0, 1),
+        99: (0, 1),
+        100: (0, 1),
+        101: (0, 1),
+        102: (0, 1),
+        103: (0, 1),
+        104: (0, 1),
+        105: (0, 1),
+        149: (0, 1, 3),
+        150: (0, 1),
+        151: (0, 1),
+        152: (0, 1),
+        153: (0, 1),
+        158: (0, 1),
+        193: (0, 1),
+        194: (0, 1),
     }
 
     DT_MIN = 0
@@ -385,7 +462,7 @@ class Ism8(asyncio.Protocol):
     @staticmethod
     def get_value_area(dp_id) -> Optional[list[Any]]:
         """returns sensor type from private array of sensor-readings"""
-        return Ism8.DATAPOINTS.get(dp_id, ["", "", "", "", ""])[Ism8.IX_VALUE_AREA]
+        return Ism8.DP_VALUES_ALLOWED.get(dp_id, ["", ""])[Ism8.IX_VALUE_AREA]
 
     @staticmethod
     def get_min_value(dp_id: int) -> Any:
@@ -419,7 +496,7 @@ class Ism8(asyncio.Protocol):
 
     @staticmethod
     def get_all_sensors():
-        """returns pointer all possible values of ISM8 datapoints"""
+        """returns pointer to all possible values of ISM8 datapoints"""
         return Ism8.DATAPOINTS
 
     @staticmethod
@@ -797,10 +874,16 @@ if __name__ == "__main__":
     myProtocol = Ism8()
     for keys, values in myProtocol.get_all_sensors().items():
         _LOGGER.debug("%s:  %s" % (keys, values))
-
-    _eventloop = asyncio.get_event_loop()
+    
+   
+    _eventloop = asyncio.new_event_loop()
+    asyncio.set_event_loop(_eventloop)
     coro = _eventloop.create_server(myProtocol.factory, "127.0.0.1", 5000)
     _server = _eventloop.run_until_complete(coro)
+    
     # Serve requests until Ctrl+C is pressed
     _LOGGER.debug("Waiting for ISM8 connection on %s", _server.sockets[0].getsockname())
-    _eventloop.run_forever()
+    try:
+        _eventloop.run_forever()
+    except KeyboardInterrupt:
+        pass
