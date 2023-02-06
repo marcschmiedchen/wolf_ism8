@@ -4,8 +4,8 @@ Module for gathering info and sending commands from/to Wolf HVAC System via ISM8
 
 import logging
 import asyncio
+from time import perf_counter
 
-from typing import Any, Optional
 from ism8_constants import *
 
 
@@ -15,22 +15,23 @@ class Ism8(asyncio.Protocol):
     feeds data into internal data array. Also provides functionality for
     writing datapoints.
     """
+
     log = logging.getLogger(__name__)
 
     @staticmethod
-    def get_datatype(dp_id: int) -> Any:
+    def get_datatype(dp_id: int):
         """returns python datatype allowed for datapoint"""
         ism_datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
         return DATATYPES.get(ism_datatype, ["", "", "", "", ""])[DT_PYTHONTYPE]
 
     @staticmethod
-    def get_step_value(dp_id: int) -> Any:
+    def get_step_value(dp_id: int):
         """returns step value for datapoint"""
         datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
         return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_STEP]
 
     @staticmethod
-    def get_unit(dp_id: int) -> Any:
+    def get_unit(dp_id: int):
         """returns unit for datapoint"""
         datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
         return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_UNIT]
@@ -45,12 +46,12 @@ class Ism8(asyncio.Protocol):
         return HVACModes.get(input, "unbekannter Modus")
 
     @staticmethod
-    def encode_HVACMode(input: str) -> Optional[bytearray]:
+    def encode_HVACMode(input: str) -> bytearray:
         for key in HVACModes:
             if HVACModes[key].lower() == input.lower().strip():
                 return bytearray([key])
         Ism8.log.error("HVAC Mode %s is not valid", input)
-        return None
+        return bytearray()
 
     @staticmethod
     def decode_Scaling(input: int) -> float:
@@ -67,24 +68,24 @@ class Ism8(asyncio.Protocol):
         return DHWModes.get(input, "unbekannter Modus")
 
     @staticmethod
-    def encode_DHWMode(input: str) -> Optional[bytearray]:
+    def encode_DHWMode(input: str) -> bytearray:
         for key in DHWModes:
             if DHWModes[key].lower() == input.lower().strip():
                 return bytearray([key])
         Ism8.log.error("DHW mode %s is not valid", input)
-        return None
+        return bytearray()
 
     @staticmethod
     def decode_HVACContrMode(input: int) -> str:
         return HVACContrModes.get(input, "unbekannter Modus")
 
     @staticmethod
-    def encode_HVACContrMode(input: str) -> Optional[bytearray]:
+    def encode_HVACContrMode(input: str) -> bytearray:
         for key in HVACContrModes:
             if HVACContrModes[key].lower() == input.lower().strip():
                 return bytearray([key])
         Ism8.log.error("HVAC Control mode %s is not valid", input)
-        return None
+        return bytearray()
 
     @staticmethod
     def decode_Bool(input: int) -> bool:
@@ -157,9 +158,10 @@ class Ism8(asyncio.Protocol):
 
     def data_received(self, data):
         """is called whenever data is ready"""
+        start_time = perf_counter()
         _header_ptr = 0
         msg_length = 0
-        Ism8.log.debug("Raw data received: %s", self.__encode_bytes(data))
+        # Ism8.log.debug("Raw data received: %s", self.__encode_bytes(data))
         while _header_ptr < len(data):
             _header_ptr = data.find(ISM_HEADER, _header_ptr)
             if _header_ptr >= 0:
@@ -185,46 +187,95 @@ class Ism8(asyncio.Protocol):
                 ack_msg = bytearray(ISM_ACK_DP_MSG)
                 ack_msg[12] = data[_header_ptr + 12]
                 ack_msg[13] = data[_header_ptr + 13]
-                Ism8.log.debug("Sending ACK: %s ", self.__encode_bytes(ack_msg))
+                # Ism8.log.debug("Sending ACK: %s ", self.__encode_bytes(ack_msg))
                 self._transport.write(ack_msg)
                 # process message without header (first 10 bytes)
                 self.process_msg(data[_header_ptr + 10 : _header_ptr + msg_length])
 
                 # prepare to get next message; advance Ptr to next Msg
                 _header_ptr += msg_length
+        end_time = perf_counter()
+        Ism8.log.debug(f"time elapsed: {end_time - start_time:0.6f}")
 
     def process_msg(self, msg):
         """
         Processes received datagram(s) according to ISM8 API specification
         into message length, command, values delivered
         """
-        # number of datapoints in message are coded into bytes 4 and 5 
+        # number of datapoints in message are coded into bytes 4 and 5
         max_dp = msg[4] * 256 + msg[5]
-        # i keeps track of the bytes 
+        # i keeps track of the bytes
         i = 0
         # loop over datapoint counter, until all dps are processed
         dp_ctr = 1
         while dp_ctr <= max_dp:
-            Ism8.log.debug("DP %d / %d in datagram:", dp_ctr, max_dp)
+            # Ism8.log.debug("DP %d / %d in datagram:", dp_ctr, max_dp)
             dp_id = msg[i + 6] * 256 + msg[i + 7]
             # dp_command = msg[i + 8]
             # to be implemented for writing values to ISM8
             dp_length = msg[i + 9]
             dp_raw_value = bytearray(msg[i + 10 : i + 10 + dp_length])
             Ism8.log.debug(
-                "Processing DP-ID %s, %s bytes: message: %s",
+                "Processing DP-ID %s, message: %s",
                 dp_id,
-                dp_length,
                 dp_raw_value,
             )
-            self.extract_datapoint(dp_id, dp_length, dp_raw_value)
+            self.extract_datapoint(dp_id, dp_raw_value)
             # now advance byte counter and datapoint counter
             dp_ctr += 1
             i = i + 10 + dp_length
 
-    def validate_dp_value(self, dp_id: int, value: Any) -> bool:
+    def extract_datapoint(self, dp_id: int, raw_bytes: bytearray) -> None:
         """
-        validate if given value is valid for the datapoint number before sending to ISM 
+        receives raw bytes and decodes them according to ISM8-API data type
+        """
+        result = 0
+        for single_byte in raw_bytes:
+            result = result * 256 + int(single_byte)
+
+        dp_type = "DPT_unknown"
+        if dp_id in DATAPOINTS:
+            dp_type = DATAPOINTS[dp_id][IX_TYPE]
+        else:
+            Ism8.log.error("unknown datapoint: %s, data:%s", dp_id, result)
+
+        if dp_type in ("DPT_Switch", "DPT_Bool", "DPT_Enable", "DPT_OpenClose"):
+            self._dp_values.update({dp_id: Ism8.decode_Bool(result)})
+
+        elif dp_type in (
+            "DPT_Value_Temp",
+            "DPT_Value_Tempd",
+            "DPT_Tempd",
+            "DPT_Value_Pres",
+            "DPT_Power",
+            "DPT_Value_Volume_Flow",
+        ):
+            self._dp_values.update({dp_id: Ism8.decode_Float(result)})
+
+        elif dp_type == "DPT_HVACMode":
+            self._dp_values.update({dp_id: Ism8.decode_HVACMode(result)})
+
+        elif dp_type == "DPT_Scaling":
+            self._dp_values.update({dp_id: Ism8.decode_Scaling(result)})
+
+        elif dp_type == "DPT_DHWMode":
+            self._dp_values.update({dp_id: Ism8.decode_DHWMode(result)})
+
+        elif dp_type == "DPT_HVACContrMode":
+            self._dp_values.update({dp_id: Ism8.decode_HVACContrMode(result)})
+
+        elif dp_type in ("DPT_ActiveEnergy", "DPT_ActiveEnergy_kWh"):
+            self._dp_values.update({dp_id: Ism8.decode_Int(result)})
+        else:
+            Ism8.log.debug("datatype unknown, using INT: %s ", dp_type)
+            self._dp_values.update({dp_id: Ism8.decode_Int(result)})
+            return
+
+        Ism8.log.debug(f"decoded DP {dp_id} {DATAPOINTS.get(dp_id)[1]} = {self._dp_values[dp_id]}")
+
+    def validate_dp_value(self, dp_id: int, value) -> bool:
+        """
+        checks if value is valid for the datapoint before sending to ISM
         """
         if dp_id not in DATAPOINTS:
             Ism8.log.error("unknown datapoint: %s, value: %s", dp_id, value)
@@ -251,7 +302,7 @@ class Ism8(asyncio.Protocol):
                 return False
         return True
 
-    def send_dp_value(self, dp_id: int, value: Any) -> None:
+    def send_dp_value(self, dp_id: int, value) -> None:
         """ """
         if not self.__validate_value_for_dp(dp_id, value):
             return
@@ -314,61 +365,6 @@ class Ism8(asyncio.Protocol):
         )
         self._transport.write(update_msg)
 
-    def extract_datapoint(self, dp_id: int, length: int, raw_bytes: bytearray) -> None:
-        """
-        decodes a single value according to API;
-        receives raw bytes from network and
-        decodes them according to API data type
-        """
-        result = 0
-        for single_byte in raw_bytes:
-            result = result * 256 + int(single_byte)
-
-        dp_type = "DPT_unknown"
-        if dp_id in DATAPOINTS:
-            dp_type = DATAPOINTS[dp_id][IX_TYPE]
-        else:
-            Ism8.log.error("unknown datapoint: %s, data:%s", dp_id, result)
-
-        if dp_type in ("DPT_Switch", "DPT_Bool", "DPT_Enable", "DPT_OpenClose"):
-            self._dp_values.update({dp_id: Ism8.decode_Bool(result)})
-
-        elif dp_type == "DPT_HVACMode":
-            self._dp_values.update({dp_id: Ism8.decode_HVACMode(result)})
-
-        elif dp_type == "DPT_Scaling":
-            self._dp_values.update({dp_id: Ism8.decode_Scaling(result)})
-
-        elif dp_type == "DPT_DHWMode":
-            self._dp_values.update({dp_id: Ism8.decode_DHWMode(result)})
-
-        elif dp_type == "DPT_HVACContrMode":
-            self._dp_values.update({dp_id: Ism8.decode_HVACContrMode(result)})
-
-        elif dp_type in (
-            "DPT_Value_Temp",
-            "DPT_Value_Tempd",
-            "DPT_Tempd",
-            "DPT_Value_Pres",
-            "DPT_Power",
-            "DPT_Value_Volume_Flow",
-        ):
-            self._dp_values.update({dp_id: Ism8.decode_Float(result)})
-
-        elif dp_type in ("DPT_ActiveEnergy", "DPT_ActiveEnergy_kWh"):
-            self._dp_values.update({dp_id: Ism8.decode_Int(result)})
-
-        else:
-            Ism8.log.debug("datatype unknown, using INT: %s ", dp_type)
-            self._dp_values.update({dp_id: Ism8.decode_Int(result)})
-
-        Ism8.log.debug(
-            "decoded DP %s : %s = %s\n",
-            dp_id,
-            DATAPOINTS.get(dp_id, "unknown DP"),
-            self._dp_values[dp_id],
-        )
-
     def connection_lost(self, exc):
         """
         Is called when connection ends. closes socket.
@@ -401,18 +397,18 @@ class Ism8(asyncio.Protocol):
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
-    #log = logging.getLogger(__name__)
+    # log = logging.getLogger(__name__)
 
-    # for informational purposes only, print all datapoints 
+    # for informational purposes only, print all datapoints once
     for keys, values in Ism8.get_all_sensors().items():
         print("%s:  %s" % (keys, values))
-    
-    #setup eventloop and start listening on standard ISM port
+
+    # setup eventloop and start listening on standard ISM port
     _eventloop = asyncio.new_event_loop()
     asyncio.set_event_loop(_eventloop)
     coro = _eventloop.create_server(Ism8, "", 12004)
     _server = _eventloop.run_until_complete(coro)
-    
+
     # Serve and print logs until Ctrl+C is pressed
     print("Waiting for ISM8 connection on %s", _server.sockets[0].getsockname())
     try:
