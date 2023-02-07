@@ -143,6 +143,9 @@ class Ism8(asyncio.Protocol):
         self._transport = None
         self._connected = False
 
+    def factory(self):
+        return self
+
     def request_all_datapoints(self):
         """send 'request all datapoints' to ISM8"""
         req_msg = bytearray(ISM_REQ_DP_MSG)
@@ -394,6 +397,11 @@ class Ism8(asyncio.Protocol):
                 ret += " "
         return ret.strip()
 
+async def test_sending():
+    print("One")
+    await asyncio.sleep(10)
+    print("Two")
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
@@ -403,15 +411,20 @@ if __name__ == "__main__":
     for keys, values in Ism8.get_all_sensors().items():
         print("%s:  %s" % (keys, values))
 
+    testProtocol=Ism8()
+
     # setup eventloop and start listening on standard ISM port
     _eventloop = asyncio.new_event_loop()
     asyncio.set_event_loop(_eventloop)
-    coro = _eventloop.create_server(Ism8, "", 12004)
-    _server = _eventloop.run_until_complete(coro)
+    coro1 = _eventloop.create_server(testProtocol.factory, "", 12004)
+    _server = _eventloop.run_until_complete(coro1)
+    #coro2 = asyncio.create_task(test_sending)
+
+
 
     # Serve and print logs until Ctrl+C is pressed
     print("Waiting for ISM8 connection on %s", _server.sockets[0].getsockname())
-    try:
-        _eventloop.run_forever()
-    except KeyboardInterrupt:
-        pass
+    # try:
+    #     #_eventloop.run_forever()
+    # except KeyboardInterrupt:
+    #     pass
