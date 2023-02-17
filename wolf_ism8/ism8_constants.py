@@ -1,4 +1,3 @@
-
 import datetime
 from time import time
 
@@ -9,9 +8,7 @@ ISM_SERVICE_ACK = b"\xF0\x86"
 ISM_SERVICE_TRANSMIT = b"\xF0\xC1"
 ISM_SERVICE_READ_ALL = b"\xF0\xD0"
 ISM_ACK_DP_OBJ = b"\x00\x00" + b"\x00\x00" + b"\x00"
-ISM_ACK_DP_MSG = (
-    ISM_HEADER + b"\x00\x11" + ISM_CONN_HEADER + ISM_SERVICE_ACK + ISM_ACK_DP_OBJ
-)
+ISM_ACK_DP_MSG = ISM_HEADER + b"\x00\x11" + ISM_CONN_HEADER + ISM_SERVICE_ACK + ISM_ACK_DP_OBJ
 ISM_REQ_DP_MSG = ISM_HEADER + b"\x00\x16" + ISM_CONN_HEADER + ISM_SERVICE_READ_ALL
 # constant byte arrays for creating ISM8 network messages
 # Msg: ISM_HEADER || bytearray(LENGTH_MSG) || ISM_CONN_HEADER || ISM_SERVICE_XX ||
@@ -301,9 +298,6 @@ DATAPOINTS = {
     372: ("SYM", "Zuletzt aktiver Stoercode", "DPT_Value_1_Ucount", False),
 }
 
-IX_VALUE_AREA = 1
-# index of datapoint value area according to ism8 api, if applicable
-
 DP_VALUES_ALLOWED = {
     56: tuple(range(20, 81, 1)),
     57: tuple(range(0, 4, 1)),
@@ -370,27 +364,31 @@ DT_STEP = 3
 # index of step value according to ism8 doc
 DT_UNIT = 4
 # index of datatype unit according to ism8 doc
+DT_LENGTH = 5
+# length in bytes according to ism8 doc
 
 DATATYPES = {
-    "DPT_Switch": (0, 1, int, 1, None),
-    "DPT_Bool": (0, 1, int, 1, None),
-    "DPT_Enable": (0, 1, int, 1, None),
-    "DPT_OpenClose": (0, 1, int, 1, None),
-    "DPT_Scaling": (0.00, 100.00, float, 100 / 255, "%"),
-    "DPT_Value_Temp": (-273.00, 670760.00, float, 1 / 100, "C"),
-    "DPT_Value_Tempd": (-670760.00, 670760.00, float, 1 / 100, "K"),
-    "DPT_Tempd": (-670760.00, 670760.00, float, 1 / 100, "K"),
-    "DPT_Value_Pres": (0, 670760.00, float, 1 / 100, "Pa"),
-    "DPT_Power": (-670760.00, 670760.00, float, 1 / 100, "kW"),
-    "DPT_Value_Volume_Flow": (-670760.00, 670760.00, float, 1 / 100, "l/h"),
-    "DPT_TimeOfDay": (None, None, type(time), None, None),
-    "DPT_Date": (None, None, datetime, None, None),
-    "DPT_Value_1_Ucount": (0, 255, int, 1, None),
-    "DPT_Value_2_Ucount": (0, 65535, int, 1, None),
-    "DPT_FlowRate_m3/h": (-2147483647, 2147483647, int, 1 / 10000, "m3/h"),
-    "DPT_HVACMode": (0, 4, int, 1, None),
-    "DPT_DHWMode": (0, 4, int, 1, None),
-    "DPT_HVACContrMode": (0, 20, int, 1, None),
+    "DPT_Switch": (0, 1, int, 1, None, 1),
+    "DPT_Bool": (0, 1, int, 1, None, 1),
+    "DPT_Enable": (0, 1, int, 1, None, 1),
+    "DPT_OpenClose": (0, 1, int, 1, None, 1),
+    "DPT_Scaling": (0.00, 100.00, float, 100 / 255, "%", 1),
+    "DPT_Value_1_Ucount": (0, 255, int, 1, None, 1),
+    "DPT_Value_2_Ucount": (0, 65535, int, 1, None, 2),
+    "DPT_Value_Temp": (-273.00, 670760.00, float, 1 / 100, "C", 2),
+    "DPT_Value_Tempd": (-670760.00, 670760.00, float, 1 / 100, "K", 2),
+    "DPT_Tempd": (-670760.00, 670760.00, float, 1 / 100, "K", 2),
+    "DPT_Value_Pres": (0, 670760.00, float, 1 / 100, "Pa", 2),
+    "DPT_Power": (-670760.00, 670760.00, float, 1 / 100, "kW", 2),
+    "DPT_Value_Volume_Flow": (-670760.00, 670760.00, float, 1 / 100, "l/h", 2),
+    "DPT_TimeOfDay": (None, None, type(time), None, None, 3),
+    "DPT_Date": (None, None, datetime, None, None, 3),
+    "DPT_FlowRate_m3/h": (-2147483647, 2147483647, int, 1 / 10000, "m3/h", 4),
+    "DPT_ActiveEnergy": (-2147483647, 2147483647, int, 1 / 10000, "Wh", 4),
+    "DPT_ActiveEnergy_kWh": (-2147483647, 2147483647, int, 1 / 10000, "kWh", 4),
+    "DPT_HVACMode": (0, 4, int, 1, None, 1),
+    "DPT_DHWMode": (0, 4, int, 1, None, 1),
+    "DPT_HVACContrMode": (0, 20, int, 1, None,1 ),
 }
 
 HVACModes = {

@@ -1,1 +1,4 @@
-.vscode/settings.json
+*.json
+*.pyc
+testData.ism
+data1.ism

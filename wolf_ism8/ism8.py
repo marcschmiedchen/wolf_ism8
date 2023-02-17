@@ -4,9 +4,9 @@ Module for gathering info and sending commands from/to Wolf HVAC System via ISM8
 
 import logging
 import asyncio
-from time import perf_counter
 
-from ism8_constants import *
+if __name__ != "__main__":
+    from .ism8_constants import *
 
 
 class Ism8(asyncio.Protocol):
@@ -161,7 +161,6 @@ class Ism8(asyncio.Protocol):
 
     def data_received(self, data):
         """is called whenever data is ready"""
-        start_time = perf_counter()
         _header_ptr = 0
         msg_length = 0
         # Ism8.log.debug("Raw data received: %s", self.__encode_bytes(data))
@@ -197,8 +196,6 @@ class Ism8(asyncio.Protocol):
 
                 # prepare to get next message; advance Ptr to next Msg
                 _header_ptr += msg_length
-        end_time = perf_counter()
-        Ism8.log.debug(f"time elapsed: {end_time - start_time:0.6f}")
 
     def process_msg(self, msg):
         """
@@ -286,7 +283,10 @@ class Ism8(asyncio.Protocol):
         if not DATAPOINTS[dp_id][IX_RW_FLAG]:
             Ism8.log.error("datapoint %s not writable", dp_id)
             return False
-        if not isinstance(value, self.get_datatype(dp_id)):
+
+        ism_datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
+        python_datatype = DATATYPES.get(ism_datatype, ["", "", "", "", ""])[DT_PYTHONTYPE]
+        if not isinstance(value, python_datatype):
             Ism8.log.error(
                 "value has invalid datatype %s, valid datatype is %s",
                 type(value),
@@ -295,19 +295,16 @@ class Ism8(asyncio.Protocol):
             return False
 
         if type(value) != str:
-            if value < self.get_min_value(dp_id) or self.get_max_value(dp_id) < value:
+            if value not in DP_VALUES_ALLOWED.get(dp_id):
                 Ism8.log.error(
-                    "value %d is out of range(%d < n < %d)",
-                    value,
-                    self.get_min_value(dp_id),
-                    self.get_max_value(dp_id),
+                    "value %d is out of range(%d)",
+                    value,DP_VALUES_ALLOWED.get(dp_id)
                 )
                 return False
         return True
 
     def send_dp_value(self, dp_id: int, value) -> None:
-        """ """
-        if not self.__validate_value_for_dp(dp_id, value):
+        if not self.validate_dp_value(dp_id, value):
             return
 
         if not self._connected or self._transport is None:
@@ -350,6 +347,7 @@ class Ism8(asyncio.Protocol):
         update_msg.extend(ISM_SERVICE_TRANSMIT)
         update_msg.extend(dp_id.to_bytes(2, byteorder="big"))
         update_msg.extend((1).to_bytes(2, byteorder="big"))
+
         update_msg.extend(dp_id.to_bytes(2, byteorder="big"))
         update_msg.extend((0).to_bytes(1, byteorder="big"))
         update_msg.extend((len(encoded_value)).to_bytes(1, byteorder="big"))
@@ -397,34 +395,24 @@ class Ism8(asyncio.Protocol):
                 ret += " "
         return ret.strip()
 
-async def test_sending():
-    print("One")
-    await asyncio.sleep(10)
-    print("Two")
-
 
 if __name__ == "__main__":
+    from ism8_constants import *
+
     logging.basicConfig(level=logging.DEBUG)
-    # log = logging.getLogger(__name__)
+    _LOGGER = logging.getLogger(__name__)
 
-    # for informational purposes only, print all datapoints once
-    for keys, values in Ism8.get_all_sensors().items():
-        print("%s:  %s" % (keys, values))
+    # let the server print its debug logs, just for proof of concept
+    my_ism8 = Ism8()
+    for keys, values in my_ism8.get_all_sensors().items():
+        _LOGGER.debug("%s:  %s" % (keys, values))
 
-    testProtocol=Ism8()
-
-    # setup eventloop and start listening on standard ISM port
-    _eventloop = asyncio.new_event_loop()
-    asyncio.set_event_loop(_eventloop)
-    coro1 = _eventloop.create_server(testProtocol.factory, "", 12004)
-    _server = _eventloop.run_until_complete(coro1)
-    #coro2 = asyncio.create_task(test_sending)
-
-
-
-    # Serve and print logs until Ctrl+C is pressed
-    print("Waiting for ISM8 connection on %s", _server.sockets[0].getsockname())
-    # try:
-    #     #_eventloop.run_forever()
-    # except KeyboardInterrupt:
-    #     pass
+    _eventloop = asyncio.get_event_loop()
+    coro = _eventloop.create_server(my_ism8.factory, "", 12004)
+    _server = _eventloop.run_until_complete(coro)
+    _LOGGER.debug("Waiting for ISM8 connection on %s", _server.sockets[0].getsockname())
+    try:
+        # Serve requests until Ctrl+C is pressed
+        _eventloop.run_forever()
+    except:
+        pass
