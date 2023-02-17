@@ -20,18 +20,27 @@ async def test_write_on_off(tst_ism8 : w.Ism8):
     73:  ('MK1', 'Mischer Zeitprogramm 2', 'DPT_Switch', True)
     74:  ('MK1', 'Mischer Zeitprogramm 3', 'DPT_Switch', True)
     '''
-    
-    print ('waiting to send')
-    await asyncio.sleep(1)
+    print ('trying to change MK1 Zeitprogramm')
     tst_ism8.send_dp_value(72, 1)
-    print ('waiting for ACK')
-    await asyncio.sleep(10)
+    await asyncio.sleep(20)
+
+async def test_write_float(tst_ism8 : w.Ism8):
+    '''
+    56: ("DKW", "Warmwassersolltemperatur", "DPT_Value_Temp", True),
+    '''
+    print ('trying to change warmwasserSollTemp')
+    #tst_ism8.send_dp_value(56, 51.0)
+    await asyncio.sleep(20)
+    tst_ism8.request_all_datapoints()
+    await asyncio.sleep(20)
+    
         
 async def main():
     ism8=w.Ism8()
     await setup_server(ism8)
     await test_connection(ism8)
-    await test_write_on_off(ism8)
+    #await test_write_on_off(ism8)
+    await test_write_float(ism8)
     
 
 

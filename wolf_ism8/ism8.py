@@ -25,12 +25,6 @@ class Ism8(asyncio.Protocol):
         return DATATYPES.get(ism_datatype, ["", "", "", "", ""])[DT_PYTHONTYPE]
 
     @staticmethod
-    def get_step_value(dp_id: int):
-        """returns step value for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
-        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_STEP]
-
-    @staticmethod
     def get_unit(dp_id: int):
         """returns unit for datapoint"""
         datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
@@ -149,7 +143,7 @@ class Ism8(asyncio.Protocol):
     def request_all_datapoints(self):
         """send 'request all datapoints' to ISM8"""
         req_msg = bytearray(ISM_REQ_DP_MSG)
-        Ism8.log.debug("Sending REQ_DP: %s ", self.__encode_bytes(req_msg))
+        Ism8.log.debug("Sending REQ_DP: %s ", req_msg.hex(':'))
         self._transport.write(req_msg)
 
     def connection_made(self, transport):
@@ -163,7 +157,6 @@ class Ism8(asyncio.Protocol):
         """is called whenever data is ready"""
         _header_ptr = 0
         msg_length = 0
-        # Ism8.log.debug("Raw data received: %s", self.__encode_bytes(data))
         while _header_ptr < len(data):
             _header_ptr = data.find(ISM_HEADER, _header_ptr)
             if _header_ptr >= 0:
@@ -189,7 +182,7 @@ class Ism8(asyncio.Protocol):
                 ack_msg = bytearray(ISM_ACK_DP_MSG)
                 ack_msg[12] = data[_header_ptr + 12]
                 ack_msg[13] = data[_header_ptr + 13]
-                # Ism8.log.debug("Sending ACK: %s ", self.__encode_bytes(ack_msg))
+                # Ism8.log.debug("Sending ACK: %s ", ack_msg.hex(':'))
                 self._transport.write(ack_msg)
                 # process message without header (first 10 bytes)
                 self.process_msg(data[_header_ptr + 10 : _header_ptr + msg_length])
@@ -296,10 +289,7 @@ class Ism8(asyncio.Protocol):
 
         if type(value) != str:
             if value not in DP_VALUES_ALLOWED.get(dp_id):
-                Ism8.log.error(
-                    "value %d is out of range(%d)",
-                    value,DP_VALUES_ALLOWED.get(dp_id)
-                )
+                Ism8.log.error("value %d is out of range", value)
                 return False
         return True
 
@@ -339,6 +329,7 @@ class Ism8(asyncio.Protocol):
             encoded_value = Ism8.encode_Int(value)
         Ism8.log.debug("encoded DP %s : %s = %s\n", dp_id, value, encoded_value)
 
+        length_of_message=DATATYPES.get(dp_type)[DT_LENGTH]
         # prepare frame with obj info
         update_msg = bytearray()
         update_msg.extend(ISM_HEADER)
@@ -362,7 +353,7 @@ class Ism8(asyncio.Protocol):
             dp_id,
             self.read(dp_id),
             value,
-            self.__encode_bytes(update_msg),
+            update_msg.hex(':'),
         )
         self._transport.write(update_msg)
 
@@ -382,20 +373,7 @@ class Ism8(asyncio.Protocol):
             return self._dp_values[dp_id]
         else:
             return None
-
-    def __encode_bytes(self, msg: bytes) -> str:
-        """encode the byte array too make it more readable"""
-        msg_hex = msg.hex()
-        n = 0
-        ret = ""
-        while n < len(msg_hex):
-            ret += msg_hex[n]
-            n += 1
-            if (n % 2) == 0:
-                ret += " "
-        return ret.strip()
-
-
+    
 if __name__ == "__main__":
     from ism8_constants import *
 
