@@ -6,14 +6,14 @@ with open("README.md") as fh:
 
 setuptools.setup(
     name="wolf_ism8",
-    version="1.7.1",
+    version="2.0",
     author="marcschmiedchen",
     author_email="marc.schmiedchen@protonmail.com",
-    description="Get data from wolf heating system via ISM8",
+    description="Write and read data from wolf heating system via ISM8",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=["wolf_ism8"],
-    python_requires=">=3.6",
+    python_requires=">=3.10",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
