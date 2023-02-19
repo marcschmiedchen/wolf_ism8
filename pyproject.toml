@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="wolf_ism8"
+version="2.0.0"
+description="Write and read data from wolf heating system via ISM8"
+readme = "README.md"
+authors = [{ name = "marcschmiedchen", email = "marc.schmiedchen@protonmail.com" }]
+license = { file = "LICENSE" }
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",   
+]
+keywords = ["Home Assistant", "Wolf", "HVAC"]
+dependencies = [
+    "asyncio",
+    "datetime",
+    "loggging",
+]
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+dev = ["black"]
+
+[project.urls]
+Homepage = "https://github.com/marcschmiedchen/wolf_ism8"

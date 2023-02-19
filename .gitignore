@@ -1,4 +1,9 @@
 *.json
 *.pyc
-testData.ism
-data1.ism
+dist
+.vscode
+.pytest_cache
+wolf_ism8.egg-info
+
+
+
