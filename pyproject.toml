@@ -20,7 +20,7 @@ keywords = ["Home Assistant", "Wolf", "HVAC"]
 dependencies = [
     "asyncio",
     "datetime",
-    "loggging",
+    "logging",
 ]
 requires-python = ">=3.9"
 
