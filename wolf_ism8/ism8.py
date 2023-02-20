@@ -20,17 +20,17 @@ class Ism8(asyncio.Protocol):
     @staticmethod
     def get_device(dp_id:int) -> str:
         """ returns device ID from private array of sensor-readings """
-        return DATAPOINTS.get(dp_id, ['','','','',''])[Ism8.DP_DEVICE]
+        return DATAPOINTS.get(dp_id, ['','','','',''])[IX_DEVICENAME]
 
     @staticmethod
     def get_name(dp_id: int) -> str:
         """ returns sensor name from private array of sensor-readings """
-        return DATAPOINTS.get(dp_id, ['','','','',''])[Ism8.DP_NAME]
+        return DATAPOINTS.get(dp_id, ['','','','',''])[IX_NAME]
 
     @staticmethod
-    def get_type(dp_id: int):
+    def get_type(dp_id: int) -> str:
         """ returns sensor type from private array of sensor-readings """
-        return DATAPOINTS.get(dp_id, ['','','','',''])[Ism8.DP_TYPE]
+        return DATAPOINTS.get(dp_id, ['','','','',''])[IX_TYPE]
 
     @staticmethod
     def get_unit(dp_id: int) -> str:
