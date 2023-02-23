@@ -21,7 +21,7 @@ async def test_write_on_off(tst_ism8: wolf.Ism8):
     72:  ('MK1', 'Mischer Zeitprogramm 1', 'DPT_Switch', True)
     """
     print("trying to activate MK1 Zeitprogramm Nbr 1")
-    tst_ism8.send_dp_value(72, 1)
+    tst_ism8.send_dp_value(72, 3)
     await asyncio.sleep(20)
 
 async def test_write_float(tst_ism8: wolf.Ism8):
@@ -68,10 +68,10 @@ async def main():
 
     await setup_server(ism8)
     await wait_for_connection(ism8)
-    await test_write_on_off(ism8)
-    await test_write_float(ism8)
-    await test_write_HVACMode(ism8)
-    await test_write_DHWMode(ism8)
+    #await test_write_on_off(ism8)
+    #await test_write_float(ism8)
+    #await test_write_HVACMode(ism8)
+    #await test_write_DHWMode(ism8)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)

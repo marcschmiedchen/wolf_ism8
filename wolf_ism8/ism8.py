@@ -18,14 +18,14 @@ class Ism8(asyncio.Protocol):
     log = logging.getLogger(__name__)
 
     @staticmethod
-    def get_device(dp_id:int) -> str:
-        """ returns device ID from private array of sensor-readings """
-        return DATAPOINTS.get(dp_id, ['','','','',''])[IX_DEVICENAME]
+    def get_device(dp_id: int) -> str:
+        """returns device ID from private array of sensor-readings"""
+        return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_DEVICENAME]
 
     @staticmethod
     def get_name(dp_id: int) -> str:
-        """ returns sensor name from static Dictionary"""
-        return DATAPOINTS.get(dp_id, ['','','','',''])[IX_NAME]
+        """returns sensor name from static Dictionary"""
+        return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_NAME]
 
     @staticmethod
     def get_type(dp_id: int) -> str:
@@ -46,34 +46,30 @@ class Ism8(asyncio.Protocol):
 
     @staticmethod
     def get_value_area(dp_id: int):
-        """returns allowd value range for write operations"""
-        return DP_VALUES_ALLOWED.get(dp_id, tuple()])
+        """returns allowed values for write operations"""
+        return DP_VALUES_ALLOWED.get(dp_id, tuple())
 
     @staticmethod
     def get_min_value(dp_id: int):
         """returns min value allowed for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[DP_TYPE]
-        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_MIN]
+        return min(Ism8.get_value_area(dp_id))
 
     @staticmethod
     def get_max_value(dp_id: int):
-        """returns min value allowed for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[DP_TYPE]
-        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_MAX]
+        """returns max value allowed for datapoint"""
+        return max(Ism8.get_value_area(dp_id))
+
+    # @staticmethod
+    # def get_python_datatype(dp_id: int)-> str:
+    #     """returns python-datatype for datapoint"""
+    #     datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
+    #     return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_PYTHONTYPE]
 
     @staticmethod
-    def get_datatype(dp_id: int)-> str:
-        """returns python datatype allowed for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[DP_TYPE]
-        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_TYPE]
-
-    @staticmethod
-    def get_step_value(dp_id: int) -> Any:
+    def get_step_value(dp_id: int):
         """returns step value for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[DP_TYPE]
+        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
         return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_STEP]
-
-
 
     @staticmethod
     def get_all_sensors() -> dict:
@@ -159,7 +155,8 @@ class Ism8(asyncio.Protocol):
             dp_raw_value = bytearray(msg[i + 10 : i + 10 + dp_length])
             Ism8.log.debug(
                 "Processing DP-ID %s, %s, message: %s",
-                dp_id, DATAPOINTS.get(dp_id, 'unknown')[IX_NAME],
+                dp_id,
+                DATAPOINTS.get(dp_id, "unknown")[IX_NAME],
                 dp_raw_value.hex(":"),
             )
             self.decode_datapoint(dp_id, dp_raw_value)
@@ -218,7 +215,7 @@ class Ism8(asyncio.Protocol):
 
     def send_dp_value(self, dp_id: int, value) -> None:
         """
-        sends values for a (writable) datapoint in ISM8. Before message is sent, 
+        sends values for a (writable) datapoint in ISM8. Before message is sent,
         several checks are performed
         """
 
@@ -229,17 +226,14 @@ class Ism8(asyncio.Protocol):
             Ism8.log.error("No Connection to ISM8 Module")
             return
 
-        #encode the value according to ISM8 spec, depending on data-type
-        #if encoding fails, None is returned an no data written
+        # encode the value according to ISM8 spec, depending on data-type
+        # if encoding fails, None is returned an no data written
         encoded_value = self.encode_datapoint(value, DATAPOINTS[dp_id][IX_TYPE])
 
         if encoded_value is not None:
             # prepare frame with obj info
             update_msg = self.build_message(dp_id, encoded_value)
-            Ism8.log.debug(
-                "Sending UPDATE_DP %d to %s:",
-                dp_id,
-                value)
+            Ism8.log.debug("Sending UPDATE_DP %d to %s:", dp_id, value)
             Ism8.log.debug(update_msg.hex(":"))
             # now send message to ISM8
             self._transport.write(update_msg)
