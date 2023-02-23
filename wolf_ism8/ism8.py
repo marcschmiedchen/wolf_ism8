@@ -24,20 +24,56 @@ class Ism8(asyncio.Protocol):
 
     @staticmethod
     def get_name(dp_id: int) -> str:
-        """ returns sensor name from private array of sensor-readings """
+        """ returns sensor name from static Dictionary"""
         return DATAPOINTS.get(dp_id, ['','','','',''])[IX_NAME]
 
     @staticmethod
     def get_type(dp_id: int) -> str:
-        """ returns sensor type from private array of sensor-readings """
+        """ returns sensor type from static Dictionary"""
         return DATAPOINTS.get(dp_id, ['','','','',''])[IX_TYPE]
 
     @staticmethod
     def get_unit(dp_id: int) -> str:
-        """returns unit for datapoint"""
+        """returns datapoint unit from static Dictionary"""
         if dp_id in DATAPOINTS:
             dp_type = DATAPOINTS[dp_id][IX_TYPE]
             return DATATYPES[dp_type][DT_UNIT]
+
+    @staticmethod
+    def is_writable(dp_id) -> bool:
+        """returns writable flag from static Dictionary"""
+        return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_RW_FLAG]
+
+    @staticmethod
+    def get_value_area(dp_id: int):
+        """returns allowd value range for write operations"""
+        return DP_VALUES_ALLOWED.get(dp_id, tuple()])
+
+    @staticmethod
+    def get_min_value(dp_id: int):
+        """returns min value allowed for datapoint"""
+        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[DP_TYPE]
+        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_MIN]
+
+    @staticmethod
+    def get_max_value(dp_id: int):
+        """returns min value allowed for datapoint"""
+        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[DP_TYPE]
+        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_MAX]
+
+    @staticmethod
+    def get_datatype(dp_id: int)-> str:
+        """returns python datatype allowed for datapoint"""
+        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[DP_TYPE]
+        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_TYPE]
+
+    @staticmethod
+    def get_step_value(dp_id: int) -> Any:
+        """returns step value for datapoint"""
+        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[DP_TYPE]
+        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_STEP]
+
+
 
     @staticmethod
     def get_all_sensors() -> dict:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="wolf_ism8"
-version="2.0.3"
+version="2.0.4"
 description="Write and read data from wolf heating system via ISM8"
 readme = "README.md"
 authors = [{ name = "marcschmiedchen", email = "marc.schmiedchen@protonmail.com" }]
