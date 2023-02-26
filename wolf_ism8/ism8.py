@@ -29,8 +29,8 @@ class Ism8(asyncio.Protocol):
 
     @staticmethod
     def get_type(dp_id: int) -> str:
-        """ returns sensor type from static Dictionary"""
-        return DATAPOINTS.get(dp_id, ['','','','',''])[IX_TYPE]
+        """returns sensor type from static Dictionary"""
+        return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
 
     @staticmethod
     def get_unit(dp_id: int) -> str:
@@ -75,7 +75,7 @@ class Ism8(asyncio.Protocol):
     def get_all_sensors() -> dict:
         """returns dictionary (nbr : list of features) for all ISM8 datapoints"""
         return DATAPOINTS
-    
+
     @staticmethod
     def get_all_devices() -> set:
         """returns tuple of all ISM8 devices."""
@@ -174,18 +174,23 @@ class Ism8(asyncio.Protocol):
         receives raw bytes, decodes them according to ISM8-API data type
         into int/str/float values and stores them in dictionary
         """
-        result = 0
-        for single_byte in raw_bytes:
-            result = result * 256 + int(single_byte)
-
-        dp_type = "DPT_unknown"
         if dp_id in DATAPOINTS:
             dp_type = DATAPOINTS[dp_id][IX_TYPE]
         else:
             Ism8.log.error("unknown datapoint: %s, data:%s", dp_id, result)
+            return
 
-        if dp_type in ("DPT_Switch", "DPT_Bool", "DPT_Enable", "DPT_OpenClose"):
-            self._dp_values.update({dp_id: decode_Bool(result)})
+        result = 0
+        for single_byte in raw_bytes:
+            result = result * 256 + int(single_byte)
+
+        if dp_type in (
+            "DPT_Switch",
+            "DPT_Bool",
+            "DPT_Enable",
+            "DPT_OpenClose",
+        ):
+            self._dp_values[dp_id] = decode_Bool(result)
 
         elif dp_type in (
             "DPT_Value_Temp",
@@ -195,22 +200,22 @@ class Ism8(asyncio.Protocol):
             "DPT_Power",
             "DPT_Value_Volume_Flow",
         ):
-            self._dp_values.update({dp_id: decode_Float(result)})
+            self._dp_values[dp_id] = decode_Float(result)
 
         elif dp_type == "DPT_HVACMode":
-            self._dp_values.update({dp_id: decode_HVACMode(result)})
+            self._dp_values[dp_id] = decode_dict(result, HVACModes)
 
         elif dp_type == "DPT_Scaling":
-            self._dp_values.update({dp_id: decode_Scaling(result)})
+            self._dp_values[dp_id] = decode_Scaling(result)
 
         elif dp_type == "DPT_DHWMode":
-            self._dp_values.update({dp_id: decode_DHWMode(result)})
+            self._dp_values[dp_id] = decode_dict(result, DHWModes)
 
         elif dp_type == "DPT_HVACContrMode":
-            self._dp_values.update({dp_id: decode_HVACContrMode(result)})
+            self._dp_values[dp_id] = decode_dict(result, HVACContrModes)
 
         elif dp_type in ("DPT_ActiveEnergy", "DPT_ActiveEnergy_kWh"):
-            self._dp_values.update({dp_id: decode_Int(result)})
+            self._dp_values[dp_id] = decode_Int(result)
         else:
             Ism8.log.debug("datatype unknown, using INT: %s ", dp_type)
             self._dp_values.update({dp_id: decode_Int(result)})
@@ -262,16 +267,21 @@ class Ism8(asyncio.Protocol):
         return update_msg
 
     def encode_datapoint(self, value, dp_type):
-        if dp_type in ("DPT_Switch", "DPT_Bool", "DPT_Enable", "DPT_OpenClose"):
+        if dp_type in (
+            "DPT_Switch",
+            "DPT_Bool",
+            "DPT_Enable",
+            "DPT_OpenClose",
+        ):
             return encode_Bool(value)
         elif dp_type == "DPT_HVACMode":
-            return encode_HVACMode(value)
+            return encode_dict(value, HVACModes)
         elif dp_type == "DPT_Scaling":
             return encode_Scaling(value)
         elif dp_type == "DPT_DHWMode":
-            return encode_DHWMode(value)
+            return encode_dict(value, DHWModes)
         elif dp_type == "DPT_HVACContrMode":
-            return encode_HVACContrMode(value)
+            return encode_dict(value, HVACContrModes)
         elif dp_type in (
             "DPT_Value_Temp",
             "DPT_Value_Tempd",

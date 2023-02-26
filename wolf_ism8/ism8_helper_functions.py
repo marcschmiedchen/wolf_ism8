@@ -3,43 +3,22 @@ from .ism8_constants import *
 
 log = logging.getLogger(__name__)
 
-
-def decode_HVACMode(input: int) -> int:
-    return input
-
-
-def encode_HVACMode(input: str) -> bytearray:
-    mode_number_list = [item[0] for item in HVACModes.items() if item[1] == input]
-    if mode_number_list:
-        return bytearray([mode_number_list[0]])
+def decode_dict(mode_number: int, dic: dict) -> str:
+    """returns a human readable string from the API-encoded mode_number"""
+    if mode_number in dict.keys():
+        return dic[mode_number]
     else:
-        log.error("VACMode not implemented")
-        return None
+        log.error("mode number not implemented:", mode_number)
 
-
-def decode_DHWMode(input: int) -> int:
-    return input
-
-
-def encode_DHWMode(input: str) -> bytearray:
-    mode_number_list = [item[0] for item in DHWModes.items() if item[1] == input]
-    if mode_number_list:
-        return bytearray([mode_number_list[0]])
+def encode_dict(mode: str, dic: dict) -> bytearray:
+    """encodes a string into corresponding ISM-Mode numbers"""    
+    entry_list = [item[0] for item in dic.items() if item[1] == mode]
+    if entry_list.length()==1: 
+        #the bytearray-constructor NEEDS a list with one entry!
+        #do not cast the mode-number on its own
+        return bytearray(entry_list)
     else:
-        log.error("DHWMode not implemented")
-        return None
-
-
-def decode_HVACContrMode(input: int) -> str:
-    return HVACContrModes.get(input, "unknown Mode")
-
-
-def encode_HVACContrMode(input: str) -> bytearray:
-    mode_number_list = [item[0] for item in HVACContrModes.items() if item[1] == input]
-    if mode_number_list:
-        return bytearray([mode_number_list[0]])
-    else:
-        log.error("HVACContrMode not implemented")
+        log.error("error decoding mode ", mode)
         return None
 
 
