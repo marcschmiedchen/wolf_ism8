@@ -75,6 +75,11 @@ class Ism8(asyncio.Protocol):
     def get_all_sensors() -> dict:
         """returns dictionary (nbr : list of features) for all ISM8 datapoints"""
         return DATAPOINTS
+    
+    @staticmethod
+    def get_all_devices() -> set:
+        """returns tuple of all ISM8 devices."""
+        return set(dp[IX_DEVICENAME] for dp in DATAPOINTS.values())
 
     def __init__(self):
         self._dp_values = {}

@@ -8,16 +8,39 @@ def decode_HVACMode(input: int) -> int:
     return input
 
 
-def encode_HVACMode(input: int) -> bytearray:
-    return bytearray([input])
+def encode_HVACMode(input: str) -> bytearray:
+    mode_number_list = [item[0] for item in HVACModes.items() if item[1] == input]
+    if mode_number_list:
+        return bytearray([mode_number_list[0]])
+    else:
+        log.error("VACMode not implemented")
+        return None
 
 
 def decode_DHWMode(input: int) -> int:
     return input
 
 
-def encode_DHWMode(input: int) -> bytearray:
-    return bytearray([input])
+def encode_DHWMode(input: str) -> bytearray:
+    mode_number_list = [item[0] for item in DHWModes.items() if item[1] == input]
+    if mode_number_list:
+        return bytearray([mode_number_list[0]])
+    else:
+        log.error("DHWMode not implemented")
+        return None
+
+
+def decode_HVACContrMode(input: int) -> str:
+    return HVACContrModes.get(input, "unknown Mode")
+
+
+def encode_HVACContrMode(input: str) -> bytearray:
+    mode_number_list = [item[0] for item in HVACContrModes.items() if item[1] == input]
+    if mode_number_list:
+        return bytearray([mode_number_list[0]])
+    else:
+        log.error("HVACContrMode not implemented")
+        return None
 
 
 def decode_Scaling(input: int) -> float:
@@ -26,14 +49,6 @@ def decode_Scaling(input: int) -> float:
 
 def encode_Scaling(input: float) -> bytearray:
     return bytearray([round(input / (100 / 255))])
-
-
-def decode_HVACContrMode(input: int) -> int:
-    return input
-
-
-def encode_HVACContrMode(input: int) -> bytearray:
-    return bytearray([input])
 
 
 def decode_Bool(input: int) -> bool:
@@ -96,7 +111,8 @@ def validate_dp_value(dp_id: int, value) -> bool:
     python_datatype = DATATYPES[dp_type][DT_PYTHONTYPE]
     if not isinstance(value, python_datatype):
         log.error(
-            "value for has invalid datatype %s, should be %s",
+            "value for %s has invalid datatype %s, should be %s",
+            dp_id,
             type(value),
             python_datatype,
         )
