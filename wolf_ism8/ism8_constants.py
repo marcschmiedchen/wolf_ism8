@@ -8,29 +8,31 @@ ISM_SERVICE_ACK = b"\xF0\x86"
 ISM_SERVICE_TRANSMIT = b"\xF0\xC1"
 ISM_SERVICE_READ_ALL = b"\xF0\xD0"
 ISM_ACK_DP_OBJ = b"\x00\x00" + b"\x00\x00" + b"\x00"
-ISM_ACK_DP_MSG = ISM_HEADER + b"\x00\x11" + ISM_CONN_HEADER + ISM_SERVICE_ACK + ISM_ACK_DP_OBJ
+ISM_ACK_DP_MSG = (
+    ISM_HEADER + b"\x00\x11" + ISM_CONN_HEADER + ISM_SERVICE_ACK + ISM_ACK_DP_OBJ
+)
 ISM_REQ_DP_MSG = ISM_HEADER + b"\x00\x16" + ISM_CONN_HEADER + ISM_SERVICE_READ_ALL
 # constant byte arrays for creating ISM8 network messages
 # Msg: ISM_HEADER || bytearray(LENGTH_MSG) || ISM_CONN_HEADER || ISM_SERVICE_XX ||
 
 DEVICES = {
-    "HG1": "Heizgeraet (1) TOB, CGB-2, MGK-2, COB-2 oder TGB-2",
-    "HG2": "Heizgeraet (2) TOB, CGB-2, MGK-2, COB-2 oder TGB-2",
-    "HG3": "Heizgeraet (3) TOB, CGB-2, MGK-2, COB-2 oder TGB-2",
-    "HG4": "Heizgeraet (4) TOB, CGB-2, MGK-2, COB-2 oder TGB-2",
-    "SYM": "Systembedienmodul",
-    "DKW": "Direkter Heizkreis + direktes Warmwasser",
-    "MK1": "Mischerkreis 1 + Warmwasser 1",
-    "MK2": "Mischerkreis 2 + Warmwasser 2",
-    "MK3": "Mischerkreis 3 + Warmwasser 3",
-    "KM": "Kaskadenmodul",
-    "MM1": "Mischermodule 1",
-    "MM2": "Mischermodule 2",
-    "MM3": "Mischermodule 3",
-    "SM": "Solarmodul",
-    "CWL": "CWL Excellent / CWL 2",
-    "BWL": "Heizgeraet (1) BWL-1S oder CHA",
-    "BM2": "BM-2 Bedienmodul",
+    "HG1": "HG1: Heizgeraet (TOB, CGB-2, MGK-2, COB-2, TGB-2)",
+    "HG2": "HG2: Heizgeraet (TOB, CGB-2, MGK-2, COB-2, TGB-2)",
+    "HG3": "HG3: Heizgeraet (TOB, CGB-2, MGK-2, COB-2, TGB-2)",
+    "HG4": "HG4: Heizgeraet (TOB, CGB-2, MGK-2, COB-2, TGB-2)",
+    "SYM": "SYM: Systembedienmodul",
+    "DKW": "DKW: Direkter Heizkreis/WW",
+    "MK1": "MK1: Mischerkreis",
+    "MK2": "MK2: Mischerkreis",
+    "MK3": "MK3: Mischerkreis",
+    "KM" : "KM: Kaskadenmodul",
+    "MM1": "MM1: Mischermodul",
+    "MM2": "MM2: Mischermodul",
+    "MM3": "MM3: Mischermodul",
+    "SM":  "SM: Solarmodul",
+    "CWL": "CWL: Wohnraumlüftung (CWL-300 / CWL-2)",
+    "BWL": "BWL: Waermepumpe (BWL-1S, CHA)",
+    "BM2": "BM2: Bedienmodul BM2",
 }
 
 IX_DEVICENAME = 0
@@ -386,9 +388,9 @@ DATATYPES = {
     "DPT_FlowRate_m3/h": (-2147483647, 2147483647, int, 1 / 10000, "m3/h", 4),
     "DPT_ActiveEnergy": (-2147483647, 2147483647, int, 1 / 10000, "Wh", 4),
     "DPT_ActiveEnergy_kWh": (-2147483647, 2147483647, int, 1 / 10000, "kWh", 4),
-    "DPT_HVACMode": (0, 4, int, 1, None, 1),
-    "DPT_DHWMode": (0, 4, int, 1, None, 1),
-    "DPT_HVACContrMode": (0, 20, int, 1, None,1 ),
+    "DPT_HVACMode": (0, 4, str, 1, None, 1),
+    "DPT_DHWMode": (0, 4, str, 1, None, 1),
+    "DPT_HVACContrMode": (0, 20, str, 1, None, 1),
 }
 
 HVACModes = {
@@ -421,4 +423,10 @@ HVACContrModes = {
     20: "NoDem",
 }
 
-DHWModes = {0: "Auto", 1: "LegioProtect", 2: "Normal", 3: "Reduced", 4: "Off"}
+DHWModes = {
+    0: "Auto",
+    1: "LegioProtect",
+    2: "Normal",
+    3: "Reduced",
+    4: "Off",
+}

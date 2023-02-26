@@ -78,8 +78,8 @@ class Ism8(asyncio.Protocol):
 
     @staticmethod
     def get_all_devices() -> set:
-        """returns tuple of all ISM8 devices."""
-        return set(dp[IX_DEVICENAME] for dp in DATAPOINTS.values())
+        """returns list of all ISM8 devices."""
+        return DEVICES.keys()
 
     def __init__(self):
         self._dp_values = {}
@@ -202,11 +202,11 @@ class Ism8(asyncio.Protocol):
         ):
             self._dp_values[dp_id] = decode_Float(result)
 
-        elif dp_type == "DPT_HVACMode":
-            self._dp_values[dp_id] = decode_dict(result, HVACModes)
-
         elif dp_type == "DPT_Scaling":
             self._dp_values[dp_id] = decode_Scaling(result)
+        
+        elif dp_type == "DPT_HVACMode":
+            self._dp_values[dp_id] = decode_dict(result, HVACModes)
 
         elif dp_type == "DPT_DHWMode":
             self._dp_values[dp_id] = decode_dict(result, DHWModes)
@@ -228,16 +228,15 @@ class Ism8(asyncio.Protocol):
         sends values for a (writable) datapoint in ISM8. Before message is sent,
         several checks are performed
         """
-
-        if not validate_dp_value(dp_id, value):
-            return
-
         if not self._connected or self._transport is None:
             Ism8.log.error("No Connection to ISM8 Module")
             return
 
+        if not validate_dp_value(dp_id, value):
+            return
+
         # encode the value according to ISM8 spec, depending on data-type
-        # if encoding fails, None is returned an no data written
+        # if encoding fails, None is returned an no data is sent 
         encoded_value = self.encode_datapoint(value, DATAPOINTS[dp_id][IX_TYPE])
 
         if encoded_value is not None:
@@ -312,7 +311,5 @@ class Ism8(asyncio.Protocol):
         """
         Returns sensor value from private dictionary of sensor-readings
         """
-        if dp_id in self._dp_values.keys():
-            return self._dp_values[dp_id]
-        else:
-            return None
+        return self._dp_values.get(dp_id, 'None')
+        
