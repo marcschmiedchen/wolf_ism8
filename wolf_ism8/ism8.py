@@ -77,7 +77,7 @@ class Ism8(asyncio.Protocol):
         return DATAPOINTS
 
     @staticmethod
-    def get_all_devices() -> set:
+    def get_all_devices() -> list:
         """returns list of all ISM8 devices."""
         return DEVICES.keys()
 
