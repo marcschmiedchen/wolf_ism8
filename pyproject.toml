@@ -18,8 +18,7 @@ classifiers = [
 ]
 keywords = ["Home Assistant", "Wolf", "HVAC"]
 dependencies = [
-    "asyncio",
-    "datetime"
+    "asyncio"
 ]
 requires-python = ">=3.8"
 
