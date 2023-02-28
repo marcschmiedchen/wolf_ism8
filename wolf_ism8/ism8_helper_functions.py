@@ -3,16 +3,16 @@ from .ism8_constants import *
 
 log = logging.getLogger(__name__)
 
-def decode_dict(mode_number: int, dic: dict) -> str:
+def decode_dict(mode_number: int, mode_dic: dict) -> str:
     """returns a human readable string from the API-encoded mode_number"""
-    if mode_number in dict.keys():
-        return dic[mode_number]
+    if mode_number in mode_dic.keys():
+        return mode_dic[mode_number]
     else:
         log.error("mode number not implemented:", mode_number)
 
-def encode_dict(mode: str, dic: dict) -> bytearray:
+def encode_dict(mode: str, mode_dic: dict) -> bytearray:
     """encodes a string into corresponding ISM-Mode numbers"""    
-    entry_list = [item[0] for item in dic.items() if item[1] == mode]
+    entry_list = [item[0] for item in mode_dic.items() if item[1] == mode]
     if entry_list.length()==1: 
         #the bytearray-constructor NEEDS a list with one entry!
         #do not cast the mode-number on its own

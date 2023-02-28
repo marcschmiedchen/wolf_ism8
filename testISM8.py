@@ -15,6 +15,9 @@ async def wait_for_connection(tst_ism8: wolf.Ism8):
     while tst_ism8._transport == None:
         print("no connection yet")
         await asyncio.sleep(5)
+    await asyncio.sleep(2)
+    tst_ism8.request_all_datapoints()
+    await asyncio.sleep(50)
 
 async def test_write_on_off(tst_ism8: wolf.Ism8):
     """

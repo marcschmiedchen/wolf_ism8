@@ -6,7 +6,7 @@ This python package was built in order to integrate a [WOLF](https://www.wolf.eu
 A test module is included in the root of the project, which conducts the following tasks for demonstration purposes (no configuration needed)
 
 * print a list of all supported datapoints
-* start listening on all IP-adresses on your host on port 12004 (stanard port for ISM8)
+* start listening on all IP-adresses on your host on port 12004 (standard port for ISM8)
 * connect to ISM8 as soon as it sends messages to your IP
 * log/debug all incoming datagrams and sensor updates
 * try to set 3 different datapoints on ISM8 as an example

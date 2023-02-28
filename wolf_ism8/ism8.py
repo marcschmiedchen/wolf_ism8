@@ -217,7 +217,7 @@ class Ism8(asyncio.Protocol):
         elif dp_type in ("DPT_ActiveEnergy", "DPT_ActiveEnergy_kWh"):
             self._dp_values[dp_id] = decode_Int(result)
         else:
-            Ism8.log.debug("datatype unknown, using INT: %s ", dp_type)
+            Ism8.log.debug("datatype not implemented, using INT: %s ", dp_type)
             self._dp_values.update({dp_id: decode_Int(result)})
             return
 
