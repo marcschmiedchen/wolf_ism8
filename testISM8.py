@@ -47,8 +47,8 @@ async def test_write_HVACMode57(tst_ism8: wolf.Ism8):
     57 Programmwahl Heizkreis DPT_HVACMode Out / In
     """
     print("trying to change HVAC modes")
-    tst_ism8.send_dp_value(57, 'Comfort')
-    tst_ism8.send_dp_value(57, 'Standby')
+    #tst_ism8.send_dp_value(57, 'Comfort')
+    #tst_ism8.send_dp_value(57, 'Standby')
     #not in range
     tst_ism8.send_dp_value(57, 'Building Protection')
     tst_ism8.send_dp_value(57, 'Auto')
@@ -75,8 +75,8 @@ async def test_write_DHWMode(tst_ism8: wolf.Ism8):
     print("trying to change DHWMode to 'Auto'")
     tst_ism8.send_dp_value(58, 'GibtsNicht')
     #not in range
-    tst_ism8.send_dp_value(58, 'Building Protection')
-    tst_ism8.send_dp_value(58, 'Comfort')
+    tst_ism8.send_dp_value(58, 'Auto')
+    tst_ism8.send_dp_value(58, 'Normal')
     await asyncio.sleep(5)
     
 async def main():
@@ -88,10 +88,10 @@ async def main():
     await wait_for_connection(ism8)
     #await test_write_on_off(ism8)
     #await test_write_float(ism8)
-    await test_write_HVACMode149(ism8)
-    await asyncio.sleep(2)
+    #await test_write_HVACMode149(ism8)
+    #await asyncio.sleep(2)
     await test_write_HVACMode57(ism8)
-    #await test_write_DHWMode(ism8)
+    await test_write_DHWMode(ism8)
     print("request all DP")
     ism8.request_all_datapoints()
     await asyncio.sleep(50)
@@ -100,6 +100,6 @@ async def main():
 
     
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=logging.DEBUG)
     _LOGGER = logging.getLogger(__name__)
     asyncio.run(main())
