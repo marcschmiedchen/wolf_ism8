@@ -9,4 +9,4 @@ A test module is included in the root of the project, which conducts the followi
 * start listening on all IP-adresses on your host on port 12004 (standard port for ISM8)
 * connect to ISM8 as soon as it sends messages to your IP
 * log/debug all incoming datagrams and sensor updates
-* try to set 3 different datapoints on ISM8 as an example
+* try to set different datapoints on ISM8 as an example
