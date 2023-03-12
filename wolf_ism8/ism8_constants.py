@@ -346,7 +346,7 @@ DP_VALUES_ALLOWED = {
     103: (0, 1),
     104: tuple([(i / 10) for i in range(-40, 45, 5)]),
     105: tuple([(i / 10) for i in range(0, 105, 5)]),
-    149: ("Auto","Comfort","Economy"),
+    149: ("Auto","Comfort","Economy","Building Protection"),
     150: (0, 1),
     151: (0, 1),
     152: (0, 1),
