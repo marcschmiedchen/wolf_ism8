@@ -204,7 +204,7 @@ class Ism8(asyncio.Protocol):
 
         elif dp_type == "DPT_Scaling":
             self._dp_values[dp_id] = decode_Scaling(result)
-        
+
         elif dp_type == "DPT_HVACMode":
             self._dp_values[dp_id] = decode_dict(result, HVACModes)
 
@@ -232,17 +232,26 @@ class Ism8(asyncio.Protocol):
             Ism8.log.error("No Connection to ISM8 Module")
             return
 
-        if not validate_dp_value(dp_id, value):
+        # check if DP exists
+        if dp_id in DATAPOINTS:
+            dp_type = DATAPOINTS[dp_id][IX_TYPE]
+        else:
+            Ism8.log.error("unknown datapoint: %s, data:%s", dp_id, value)
             return
 
-        # encode the value according to ISM8 spec, depending on data-type
-        # if encoding fails, None is returned an no data is sent 
-        encoded_value = self.encode_datapoint(value, DATAPOINTS[dp_id][IX_TYPE])
+        # return if out of range
+        if not validate_dp_range(dp_id, value):
+            Ism8.log.debug("validation failed")
+            return
+
+        # now encode the value according to ISM8 spec, depending on data-type
+        # if encoding fails, None is returned an no data is sent
+        encoded_value = self.encode_datapoint(value, dp_type)
 
         if encoded_value is not None:
             # prepare frame with obj info
             update_msg = self.build_message(dp_id, encoded_value)
-            Ism8.log.debug("Sending UPDATE_DP %d to %s:", dp_id, value)
+            Ism8.log.debug("Sending UPDATE_DP %d to %s:", dp_id, encoded_value)
             Ism8.log.debug(update_msg.hex(":"))
             # now send message to ISM8
             self._transport.write(update_msg)
@@ -273,14 +282,7 @@ class Ism8(asyncio.Protocol):
             "DPT_OpenClose",
         ):
             return encode_Bool(value)
-        elif dp_type == "DPT_HVACMode":
-            return encode_dict(value, HVACModes)
-        elif dp_type == "DPT_Scaling":
-            return encode_Scaling(value)
-        elif dp_type == "DPT_DHWMode":
-            return encode_dict(value, DHWModes)
-        elif dp_type == "DPT_HVACContrMode":
-            return encode_dict(value, HVACContrModes)
+
         elif dp_type in (
             "DPT_Value_Temp",
             "DPT_Value_Tempd",
@@ -290,8 +292,19 @@ class Ism8(asyncio.Protocol):
             "DPT_Value_Volume_Flow",
         ):
             return encode_Float(value)
-        Ism8.log.error("datatype unknown or not implemented, aborting")
-        return None
+
+        elif dp_type == "DPT_Scaling":
+            return encode_Scaling(value)
+
+        elif dp_type == "DPT_HVACMode":
+            return encode_dict(value, HVACModes)
+
+        elif dp_type == "DPT_DHWMode":
+            return encode_dict(value, DHWModes)
+
+        else:
+            Ism8.log.debug("writing datatype not implemented: %s ", dp_type)
+            return None
 
     def connection_lost(self, exc):
         """
@@ -311,5 +324,4 @@ class Ism8(asyncio.Protocol):
         """
         Returns sensor value from private dictionary of sensor-readings
         """
-        return self._dp_values.get(dp_id, 'None')
-        
+        return self._dp_values.get(dp_id, "None")

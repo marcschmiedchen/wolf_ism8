@@ -16,15 +16,16 @@ async def wait_for_connection(tst_ism8: wolf.Ism8):
         print("no connection yet")
         await asyncio.sleep(5)
     await asyncio.sleep(2)
-    tst_ism8.request_all_datapoints()
-    await asyncio.sleep(50)
+    print("request all DP")
+    #tst_ism8.request_all_datapoints()
+    #await asyncio.sleep(50)
 
 async def test_write_on_off(tst_ism8: wolf.Ism8):
     """
     72:  ('MK1', 'Mischer Zeitprogramm 1', 'DPT_Switch', True)
     """
     print("trying to activate MK1 Zeitprogramm Nbr 1")
-    tst_ism8.send_dp_value(72, 3)
+    tst_ism8.send_dp_value(72, 1)
     await asyncio.sleep(20)
 
 async def test_write_float(tst_ism8: wolf.Ism8):
@@ -32,7 +33,7 @@ async def test_write_float(tst_ism8: wolf.Ism8):
     56: ("DKW", "Warmwassersolltemperatur", "DPT_Value_Temp", True),
     """
     print("trying to change warmwasserSollTemp to 51.4")
-    tst_ism8.send_dp_value(56, 51.4)
+    tst_ism8.send_dp_value(56, 51.8)
     await asyncio.sleep(20)
     
 
@@ -49,21 +50,25 @@ async def test_write_HVACMode(tst_ism8: wolf.Ism8):
     57 Programmwahl Heizkreis DPT_HVACMode Out / In
     """
     print("trying to change HVAC to 'Auto'")
-    tst_ism8.send_dp_value(57, 0)
+    tst_ism8.send_dp_value(57, 'Comfort')
+    tst_ism8.send_dp_value(57, 'GibtsNicht')
+    #not in range
+    tst_ism8.send_dp_value(57, 'Building Protection')
+    tst_ism8.send_dp_value(57, 'Auto')
     await asyncio.sleep(5)
-    tst_ism8.request_all_datapoints()
-    await asyncio.sleep(20)
+    
 
 async def test_write_DHWMode(tst_ism8: wolf.Ism8):
     """
     58 Programmwahl Warmwasser DPT_DHWMode Out / In
     """
     print("trying to change DHWMode to 'Auto'")
-    tst_ism8.send_dp_value(58, 0)
+    tst_ism8.send_dp_value(58, 'GibtsNicht')
+    #not in range
+    tst_ism8.send_dp_value(58, 'Building Protection')
+    tst_ism8.send_dp_value(58, 'Comfort')
     await asyncio.sleep(5)
-    tst_ism8.request_all_datapoints()
-    await asyncio.sleep(20)
-
+    
 async def main():
     ism8 = wolf.Ism8()
     for keys, values in wolf.DATAPOINTS.items():
@@ -73,10 +78,11 @@ async def main():
     await wait_for_connection(ism8)
     #await test_write_on_off(ism8)
     #await test_write_float(ism8)
-    #await test_write_HVACMode(ism8)
+    await test_write_HVACMode(ism8)
     #await test_write_DHWMode(ism8)
-
+    await asyncio.sleep(10)
+    
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     _LOGGER = logging.getLogger(__name__)
     asyncio.run(main())

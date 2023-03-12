@@ -13,12 +13,16 @@ def decode_dict(mode_number: int, mode_dic: dict) -> str:
 def encode_dict(mode: str, mode_dic: dict) -> bytearray:
     """encodes a string into corresponding ISM-Mode numbers"""    
     entry_list = [item[0] for item in mode_dic.items() if item[1] == mode]
-    if entry_list.length()==1: 
+    if not entry_list:
+        log.error("error encoding %s", mode)
+        log.error("available modes: ",mode_dic.items())
+        return None
+    if len(entry_list)==1: 
         #the bytearray-constructor NEEDS a list with one entry!
         #do not cast the mode-number on its own
         return bytearray(entry_list)
     else:
-        log.error("error decoding mode ", mode)
+        log.error("error encoding mode, matching not exact ", mode)
         return None
 
 
@@ -75,17 +79,21 @@ def encode_Float(input: float) -> bytearray:
     return encoded_float
 
 
-def validate_dp_value(dp_id: int, value) -> bool:
+def validate_dp_range(dp_id: int, value) -> bool:
     """
     checks if value is valid for the datapoint before sending to ISM
     """
+    #check if dp exists at all
     if dp_id not in DATAPOINTS:
         log.error("unknown datapoint: %s, value: %s", dp_id, value)
         return False
+    
+    #check if dp is R/O
     if not DATAPOINTS[dp_id][IX_RW_FLAG]:
         log.error("datapoint %s not writable", dp_id)
         return False
 
+    #check if datatype is as expected
     dp_type = DATAPOINTS[dp_id][IX_TYPE]
     python_datatype = DATATYPES[dp_type][DT_PYTHONTYPE]
     if not isinstance(value, python_datatype):
@@ -96,8 +104,21 @@ def validate_dp_value(dp_id: int, value) -> bool:
             python_datatype,
         )
         return False
-
-    if (value > max(DP_VALUES_ALLOWED.get(dp_id))) or (value < min(DP_VALUES_ALLOWED.get(dp_id))):
-        log.error("value %d is out of range", value)
-        return False
+    
+    #check if value is in allowed range
+    if isinstance(value, str):
+        if dp_type == "DPT_HVACMode":
+            if value not in DP_VALUES_ALLOWED[dp_id]:
+                log.error("value '%s' is out of range", value)
+                log.error(DP_VALUES_ALLOWED[dp_id])
+                return False
+        elif dp_type == "DPT_DHWMode":
+            if value not in DHWModes.values():
+                log.error("value '%s' is out of range", value)
+                log.error(DP_VALUES_ALLOWED[dp_id])
+                return False
+    else:
+        if (value > max(DP_VALUES_ALLOWED[dp_id])) or (value < min(DP_VALUES_ALLOWED[dp_id])):
+            log.error("value %d is out of range", value)
+            return False
     return True
