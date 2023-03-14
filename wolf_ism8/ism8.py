@@ -232,6 +232,7 @@ class Ism8(asyncio.Protocol):
         sends values for a (writable) datapoint in ISM8. Before message is sent,
         several checks are performed
         """
+        Ism8.log.debug(value)
         if not self._connected or self._transport is None:
             Ism8.log.error("No Connection to ISM8 Module")
             return
@@ -251,11 +252,12 @@ class Ism8(asyncio.Protocol):
         # now encode the value according to ISM8 spec, depending on data-type
         # if encoding fails, None is returned an no data is sent
         encoded_value = self.encode_datapoint(value, dp_type)
+        Ism8.log.debug(encoded_value)
 
         if encoded_value is not None:
             # prepare frame with obj info
             update_msg = self.build_message(dp_id, encoded_value)
-            Ism8.log.debug("Sending UPDATE_DP %d to %s:", dp_id, encoded_value)
+            Ism8.log.debug("Setting DP nbr. %d to %s:", dp_id, encoded_value)
             Ism8.log.debug(update_msg.hex(":"))
             # now send message to ISM8
             self._transport.write(update_msg)
