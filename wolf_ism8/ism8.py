@@ -104,6 +104,14 @@ class Ism8(asyncio.Protocol):
         self._transport = transport
         self._connected = True
 
+    def connection_lost(self, exc):
+        """
+        Is called when connection ends. closes socket.
+        """
+        Ism8.log.debug("ISM8 closed the connection.Stopping")
+        self._connected = False
+        self._transport.close()
+
     def data_received(self, data) -> None:
         """is called whenever data is ready. Conducts buffering, slices the messages
         and extracts the payload for further processing."""
@@ -244,7 +252,7 @@ class Ism8(asyncio.Protocol):
             Ism8.log.error("unknown datapoint: %s, data:%s", dp_id, value)
             return
 
-        # return if out of range
+        # return if value is out of range
         if not validate_dp_range(dp_id, value):
             Ism8.log.debug("validation failed")
             return
@@ -252,13 +260,11 @@ class Ism8(asyncio.Protocol):
         # now encode the value according to ISM8 spec, depending on data-type
         # if encoding fails, None is returned an no data is sent
         encoded_value = self.encode_datapoint(value, dp_type)
-        Ism8.log.debug(encoded_value)
 
         if encoded_value is not None:
             # prepare frame with obj info
             update_msg = self.build_message(dp_id, encoded_value)
             Ism8.log.debug("Setting DP nbr. %d to %s:", dp_id, encoded_value)
-            Ism8.log.debug(update_msg.hex(":"))
             # now send message to ISM8
             self._transport.write(update_msg)
 
@@ -311,14 +317,6 @@ class Ism8(asyncio.Protocol):
         else:
             Ism8.log.debug("writing datatype not implemented: %s ", dp_type)
             return None
-
-    def connection_lost(self, exc):
-        """
-        Is called when connection ends. closes socket.
-        """
-        Ism8.log.debug("ISM8 closed the connection.Stopping")
-        self._connected = False
-        self._transport.close()
 
     def read(self, dp_id: int):
         """

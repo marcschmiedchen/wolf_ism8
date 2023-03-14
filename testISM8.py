@@ -5,7 +5,7 @@ import wolf_ism8 as wolf
 
 async def setup_server(tst_ism8: wolf.Ism8):
     _eventloop = asyncio.get_running_loop()
-    task1 = _eventloop.create_task(_eventloop.create_server(tst_ism8.factory, "", 12004))
+    task1 = _eventloop.create_task(_eventloop.create_server(tst_ism8.factory, "192.168.2.99", 12004))
     print("Setup Server")
     _server = await task1
     _LOGGER.debug("Waiting for ISM8 connection on %s", _server.sockets[0].getsockname())
@@ -23,7 +23,7 @@ async def test_write_on_off(tst_ism8: wolf.Ism8):
     """
     print("trying to activate MK1 Zeitprogramm Nbr 1")
     tst_ism8.send_dp_value(72, 1)
-    await asyncio.sleep(20)
+    await asyncio.sleep(10)
 
 async def test_write_float(tst_ism8: wolf.Ism8):
     """
@@ -31,7 +31,7 @@ async def test_write_float(tst_ism8: wolf.Ism8):
     """
     print("trying to change warmwasserSollTemp to 51.4")
     tst_ism8.send_dp_value(56, 51.8)
-    await asyncio.sleep(20)
+    await asyncio.sleep(10)
     
 
 async def test_write_scaling(tst_ism8: wolf.Ism8):
@@ -90,15 +90,15 @@ async def main():
     await asyncio.sleep(5)
     #await test_write_float(ism8)
     #await test_write_HVACMode149(ism8)
-    #await asyncio.sleep(2)
     #print (ism8.get_value_area(57))
     #await test_write_HVACMode57(ism8)
     #await test_write_DHWMode(ism8)
-    print("request all DP")
-    ism8.request_all_datapoints()
-    await asyncio.sleep(50)
+    #print("request all DP")
+    #ism8.request_all_datapoints()
+    #ism8.connection_lost()
+    await asyncio.sleep(1)
     _server.close()
-    await asyncio.sleep(10)
+
 
     
 if __name__ == "__main__":

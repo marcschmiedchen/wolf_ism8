@@ -83,11 +83,7 @@ def validate_dp_range(dp_id: int, value) -> bool:
     """
     checks if value is valid for the datapoint before sending to ISM
     """
-    #check if dp exists at all
-    if dp_id not in DATAPOINTS:
-        log.error("unknown datapoint: %s, value: %s", dp_id, value)
-        return False
-    
+     
     #check if dp is R/O
     if not DATAPOINTS[dp_id][IX_RW_FLAG]:
         log.error("datapoint %s not writable", dp_id)
