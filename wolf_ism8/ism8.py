@@ -48,28 +48,17 @@ class Ism8(asyncio.Protocol):
     def get_value_area(dp_id: int):
         """returns allowed values for write operations"""
         return DP_VALUES_ALLOWED.get(dp_id, tuple())
-
+    
     @staticmethod
-    def get_min_value(dp_id: int):
-        """returns min value allowed for datapoint"""
-        return min(Ism8.get_value_area(dp_id))
-
-    @staticmethod
-    def get_max_value(dp_id: int):
-        """returns max value allowed for datapoint"""
-        return max(Ism8.get_value_area(dp_id))
+    def get_library_version()->str:
+        """returns current implementation version"""
+        return LIB_VERSION
 
     # @staticmethod
-    # def get_python_datatype(dp_id: int)-> str:
-    #     """returns python-datatype for datapoint"""
+    # def get_step_value(dp_id: int):
+    #     """returns step value for datapoint"""
     #     datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
-    #     return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_PYTHONTYPE]
-
-    @staticmethod
-    def get_step_value(dp_id: int):
-        """returns step value for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
-        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_STEP]
+    #     return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_STEP]
 
     @staticmethod
     def get_all_sensors() -> dict:

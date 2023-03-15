@@ -1,6 +1,7 @@
 import datetime
 from time import time
 
+LIB_VERSION = "2.1.0"
 ISM_HEADER = b"\x06\x20\xf0\x80"
 ISM_CONN_HEADER = b"\x04\x00\x00\x00"
 ISM_SERVICE_RECEIVE = b"\xF0\x06"
@@ -8,9 +9,7 @@ ISM_SERVICE_ACK = b"\xF0\x86"
 ISM_SERVICE_TRANSMIT = b"\xF0\xC1"
 ISM_SERVICE_READ_ALL = b"\xF0\xD0"
 ISM_ACK_DP_OBJ = b"\x00\x00" + b"\x00\x00" + b"\x00"
-ISM_ACK_DP_MSG = (
-    ISM_HEADER + b"\x00\x11" + ISM_CONN_HEADER + ISM_SERVICE_ACK + ISM_ACK_DP_OBJ
-)
+ISM_ACK_DP_MSG = ISM_HEADER + b"\x00\x11" + ISM_CONN_HEADER + ISM_SERVICE_ACK + ISM_ACK_DP_OBJ
 ISM_REQ_DP_MSG = ISM_HEADER + b"\x00\x16" + ISM_CONN_HEADER + ISM_SERVICE_READ_ALL
 # constant byte arrays for creating ISM8 network messages
 # Msg: ISM_HEADER || bytearray(LENGTH_MSG) || ISM_CONN_HEADER || ISM_SERVICE_XX ||
@@ -25,11 +24,11 @@ DEVICES = {
     "MK1": "MK1: Mischerkreis",
     "MK2": "MK2: Mischerkreis",
     "MK3": "MK3: Mischerkreis",
-    "KM" : "KM: Kaskadenmodul",
+    "KM": "KM: Kaskadenmodul",
     "MM1": "MM1: Mischermodul",
     "MM2": "MM2: Mischermodul",
     "MM3": "MM3: Mischermodul",
-    "SM":  "SM: Solarmodul",
+    "SM": "SM: Solarmodul",
     "CWL": "CWL: Wohnraumlüftung (CWL-300 / CWL-2)",
     "BWL": "BWL: Waermepumpe (BWL-1S, CHA)",
     "BM2": "BM2: Bedienmodul BM2",
@@ -302,8 +301,8 @@ DATAPOINTS = {
 
 DP_VALUES_ALLOWED = {
     56: tuple(range(20, 81, 1)),
-    57: ("Auto","Comfort","Standby","Economy"),
-    58: ("Auto","Normal","Off"),
+    57: ("Auto", "Comfort", "Standby", "Economy"),
+    58: ("Auto", "Normal", "Off"),
     59: (0, 1),
     60: (0, 1),
     61: (0, 1),
@@ -313,8 +312,8 @@ DP_VALUES_ALLOWED = {
     65: tuple([(i / 10) for i in range(-40, 45, 5)]),
     66: tuple([(i / 10) for i in range(0, 105, 5)]),
     69: tuple(range(20, 81, 1)),
-    70: ("Auto","Comfort","Standby","Economy"),
-    71: ("Auto","Normal","Off"),
+    70: ("Auto", "Comfort", "Standby", "Economy"),
+    71: ("Auto", "Normal", "Off"),
     72: (0, 1),
     73: (0, 1),
     74: (0, 1),
@@ -325,8 +324,8 @@ DP_VALUES_ALLOWED = {
     78: tuple([(i / 10) for i in range(-40, 45, 5)]),
     79: tuple([(i / 10) for i in range(0, 105, 5)]),
     82: tuple(range(20, 81, 1)),
-    83: ("Auto","Comfort","Standby","Economy"),
-    84: ("Auto","Normal","Off"),
+    83: ("Auto", "Comfort", "Standby", "Economy"),
+    84: ("Auto", "Normal", "Off"),
     85: (0, 1),
     86: (0, 1),
     87: (0, 1),
@@ -336,8 +335,8 @@ DP_VALUES_ALLOWED = {
     91: tuple([(i / 10) for i in range(-40, 45, 5)]),
     92: tuple([(i / 10) for i in range(0, 105, 5)]),
     95: tuple(range(20, 81, 1)),
-    96: ("Auto","Comfort","Standby","Economy"),
-    97: ("Auto","Normal","Off"),
+    96: ("Auto", "Comfort", "Standby", "Economy"),
+    97: ("Auto", "Normal", "Off"),
     98: (0, 1),
     99: (0, 1),
     100: (0, 1),
@@ -346,7 +345,7 @@ DP_VALUES_ALLOWED = {
     103: (0, 1),
     104: tuple([(i / 10) for i in range(-40, 45, 5)]),
     105: tuple([(i / 10) for i in range(0, 105, 5)]),
-    149: ("Auto","Comfort","Economy","Building Protection"),
+    149: ("Auto", "Comfort", "Economy", "Building Protection"),
     150: (0, 1),
     151: (0, 1),
     152: (0, 1),
