@@ -174,7 +174,7 @@ class Ism8(asyncio.Protocol):
         if dp_id in DATAPOINTS:
             dp_type = DATAPOINTS[dp_id][IX_TYPE]
         else:
-            Ism8.log.error("unknown datapoint: %s, data:%s", dp_id, result)
+            Ism8.log.error("unknown datapoint: %s, data:%s", dp_id, raw_bytes)
             return
 
         result = 0
