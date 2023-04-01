@@ -257,7 +257,7 @@ class Ism8(asyncio.Protocol):
             # now send message to ISM8
             self._transport.write(update_msg)
 
-    def build_message(self, dp_id, encoded_value):
+    def build_message(self, dp_id: int, encoded_value: bytearray):
         update_msg = bytearray()
         update_msg.extend(ISM_HEADER)
         update_msg.extend((0).to_bytes(2, byteorder="big"))
