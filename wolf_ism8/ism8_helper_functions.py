@@ -40,7 +40,7 @@ def decode_Bool(input: int) -> bool:
 
 
 def encode_Bool(input: bool) -> bytearray:
-    return bytearray(b"\x01") if input==1 else bytearray(b"\x01")
+    return bytearray(b"\x01") if input==True else bytearray(b"\x00")
 
 
 def decode_Int(input: int) -> int:
