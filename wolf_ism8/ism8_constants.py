@@ -9,7 +9,9 @@ ISM_SERVICE_ACK = b"\xF0\x86"
 ISM_SERVICE_TRANSMIT = b"\xF0\xC1"
 ISM_SERVICE_READ_ALL = b"\xF0\xD0"
 ISM_ACK_DP_OBJ = b"\x00\x00" + b"\x00\x00" + b"\x00"
-ISM_ACK_DP_MSG = ISM_HEADER + b"\x00\x11" + ISM_CONN_HEADER + ISM_SERVICE_ACK + ISM_ACK_DP_OBJ
+ISM_ACK_DP_MSG = (
+    ISM_HEADER + b"\x00\x11" + ISM_CONN_HEADER + ISM_SERVICE_ACK + ISM_ACK_DP_OBJ
+)
 ISM_REQ_DP_MSG = ISM_HEADER + b"\x00\x16" + ISM_CONN_HEADER + ISM_SERVICE_READ_ALL
 # constant byte arrays for creating ISM8 network messages
 # Msg: ISM_HEADER || bytearray(LENGTH_MSG) || ISM_CONN_HEADER || ISM_SERVICE_XX ||
@@ -32,6 +34,7 @@ DEVICES = {
     "CWL": "CWL: Wohnraumlüftung (CWL-300 / CWL-2)",
     "BWL": "BWL: Waermepumpe (BWL-1S, CHA)",
     "BM2": "BM2: Bedienmodul BM2",
+    "DEV": "DEV: fuer Entwickler -- undokumentierte Datenpunkte"
 }
 
 IX_DEVICENAME = 0
@@ -254,13 +257,25 @@ DATAPOINTS = {
     210: ("KM", "Sammlertemperaturvorgabe", "DPT_Value_Temp", True),
     211: ("KM", "Betriebsart Heizen/Kuehlen", "DPT_Switch", False),
     251: ("BM2", "Erkennung Heiz-/ Mischerkreise", "DPT_Value_1_Ucount", False),
-    346: ("CWL", "undokumentiert_346", "DPT_unknown", False),
-    349: ("CWL", "undokumentiert_349", "DPT_unknown", False),
-    351: ("CWL", "undokumentiert_351", "DPT_unknown", False),
-    350: ("CWL", "undokumentiert_351", "DPT_unknown", False),
-    352: ("CWL", "undokumentiert_352", "DPT_unknown", False),
-    353: ("CWL", "undokumentiert_353", "DPT_unknown", False),
-    354: ("CWL", "undokumentiert_354", "DPT_unknown", False),
+    336: ("DEV", "undokumentiert_336", "DPT_unknown", False),
+    337: ("DEV", "undokumentiert_337", "DPT_unknown", False),
+    338: ("DEV", "undokumentiert_338", "DPT_unknown", False),
+    339: ("DEV", "undokumentiert_339", "DPT_unknown", False),
+    340: ("DEV", "undokumentiert_340", "DPT_unknown", False),
+    341: ("DEV", "undokumentiert_341", "DPT_unknown", False),
+    342: ("DEV", "undokumentiert_342", "DPT_unknown", False),
+    343: ("DEV", "undokumentiert_343", "DPT_unknown", False),
+    344: ("DEV", "undokumentiert_344", "DPT_unknown", False),
+    345: ("DEV", "undokumentiert_345", "DPT_unknown", False),
+    346: ("DEV", "undokumentiert_346", "DPT_unknown", False),
+    347: ("DEV", "undokumentiert_347", "DPT_unknown", False),
+    348: ("DEV", "undokumentiert_348", "DPT_unknown", False),
+    349: ("DEV", "undokumentiert_349", "DPT_unknown", False),
+    350: ("DEV", "undokumentiert_350", "DPT_unknown", False),
+    351: ("DEV", "undokumentiert_351", "DPT_unknown", False),
+    352: ("DEV", "undokumentiert_352", "DPT_unknown", False),
+    353: ("DEV", "undokumentiert_353", "DPT_unknown", False),
+    354: ("DEV", "undokumentiert_354", "DPT_unknown", False),
     355: ("BM2", "Erkennung verfuegbarer Geraete 1", "DPT_Value_2_Ucount", False),
     356: ("BM2", "Erkennung verfuegbarer Geraete 2", "DPT_Value_2_Ucount", False),
     357: (
