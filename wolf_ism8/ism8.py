@@ -38,6 +38,8 @@ class Ism8(asyncio.Protocol):
         if dp_id in DATAPOINTS:
             dp_type = DATAPOINTS[dp_id][IX_TYPE]
             return DATATYPES[dp_type][DT_UNIT]
+        else:
+            return ""
 
     @staticmethod
     def is_writable(dp_id) -> bool:
@@ -54,25 +56,25 @@ class Ism8(asyncio.Protocol):
         """returns current implementation version"""
         return LIB_VERSION
 
-    # @staticmethod
-    # def get_step_value(dp_id: int):
-    #     """returns step value for datapoint"""
-    #     datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
-    #     return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_STEP]
+    @staticmethod
+    def get_step_value(dp_id: int):
+        """returns step value for datapoint"""
+        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
+        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_STEP]
 
     @staticmethod
     def get_all_sensors() -> dict:
-        """returns dictionary (nbr : list of features) for all ISM8 datapoints"""
+        """returns dictionary (nbr -> list of properties) for all ISM8 datapoints"""
         return DATAPOINTS
 
     @staticmethod
-    def get_all_devices() -> list:
-        """returns list of all ISM8 devices."""
-        return DEVICES.keys()
+    def get_all_devices():
+        """returns list of all ISM8 devices. Unique first Component of DATAPOINTS"""
+        return sorted(set([x[0] for x in DATAPOINTS.values()]))
 
     def __init__(self):
+        # the datapoint-values from the device are stored and buffered here
         self._dp_values = {}
-        # the datapoint-values (IDs matching the list above) are stored here
         self._transport = None
         self._connected = False
         return
@@ -84,7 +86,8 @@ class Ism8(asyncio.Protocol):
         """send 'request all datapoints' to ISM8"""
         req_msg = bytearray(ISM_REQ_DP_MSG)
         Ism8.log.debug("Sending REQ_ALL_DP: %s ", req_msg.hex(":"))
-        self._transport.write(req_msg)
+        if self._transport:
+            self._transport.write(req_msg)
 
     def connection_made(self, transport) -> None:
         """is called as soon as an ISM8 connects to server"""
@@ -97,9 +100,10 @@ class Ism8(asyncio.Protocol):
         """
         Is called when connection ends. closes socket.
         """
-        Ism8.log.debug("ISM8 closed the connection.Stopping")
+        Ism8.log.debug("ISM8 closed the connection. Stopping")
         self._connected = False
-        self._transport.close()
+        if self._transport:
+            self._transport.close()
 
     def data_received(self, data) -> None:
         """is called whenever data is ready. Conducts buffering, slices the messages
@@ -116,6 +120,9 @@ class Ism8(asyncio.Protocol):
                     # msg_length comes in bytes 4 and 5
                 else:
                     msg_length = len(data) + 1
+            else:
+                Ism8.log.debug("No ISM8-signature in network message. Skipping data.")
+                break
 
             # 2 possible outcomes here: Buffer is to short for message=>abort
             # buffer is larger than msg => : process 1 message,
@@ -131,10 +138,10 @@ class Ism8(asyncio.Protocol):
                 ack_msg = bytearray(ISM_ACK_DP_MSG)
                 ack_msg[12] = data[_header_ptr + 12]
                 ack_msg[13] = data[_header_ptr + 13]
-                self._transport.write(ack_msg)
+                if self._transport:
+                    self._transport.write(ack_msg)
                 # process message without header (first 10 bytes)
                 self.process_msg(data[_header_ptr + 10 : _header_ptr + msg_length])
-
                 # prepare to get next message; advance Ptr to next Msg
                 _header_ptr += msg_length
 
@@ -242,7 +249,7 @@ class Ism8(asyncio.Protocol):
 
         # return if value is out of range
         if not validate_dp_range(dp_id, value):
-            Ism8.log.debug("validation failed")
+            Ism8.log.info("Validation failed. data out of range.")
             return
 
         # now encode the value according to ISM8 spec, depending on data-type
@@ -306,14 +313,8 @@ class Ism8(asyncio.Protocol):
             Ism8.log.debug(f"writing datatype not implemented: {dp_type}")
             return None
 
-    def read(self, dp_id: int):
-        """
-        deprecated function name, please use read_sensor in future
-        """
-        return self.read_sensor(dp_id)
-
     def read_sensor(self, dp_id: int):
         """
         Returns sensor value from private dictionary of sensor-readings
         """
-        return self._dp_values.get(dp_id, "None")
+        return self._dp_values.get(dp_id, None)

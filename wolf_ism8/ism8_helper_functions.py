@@ -18,6 +18,7 @@ def decode_dict(mode_number: int, mode_dic: dict) -> str:
         return mode_dic[mode_number]
     else:
         log.error(f"mode number {mode_number} not implemented:")
+        return ''
 
 
 def encode_dict(mode: str, mode_dic: dict) -> bytearray:

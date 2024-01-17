@@ -6,7 +6,7 @@ import wolf_ism8 as wolf
 async def setup_server(tst_ism8: wolf.Ism8):
     _eventloop = asyncio.get_running_loop()
     task1 = _eventloop.create_task(
-        _eventloop.create_server(tst_ism8.factory, "192.168.2.99", 12004)
+        _eventloop.create_server(tst_ism8.factory, port=12004)
     )
     print("Setup Server")
     _server = await task1
@@ -89,8 +89,10 @@ async def test_write_DHWMode(tst_ism8: wolf.Ism8):
 
 async def main():
     ism8 = wolf.Ism8()
-    for keys, values in wolf.DATAPOINTS.items():
-        _LOGGER.debug(f"{keys}:  {values}")
+    # for keys, values in wolf.DATAPOINTS.items():
+    #    _LOGGER.debug(f"{keys}:  {values}")
+
+    print(ism8.get_all_devices())
 
     _server = await setup_server(ism8)
     await wait_for_connection(ism8)
@@ -102,9 +104,8 @@ async def main():
     # await test_write_HVACMode57(ism8)
     # await test_write_DHWMode(ism8)
     # print("request all DP")
-    ism8.request_all_datapoints()
-    await asyncio.sleep(100)
-    ism8.connection_lost(None)
+    # ism8.request_all_datapoints()
+    await asyncio.sleep(10)
     _server.close()
 
 
