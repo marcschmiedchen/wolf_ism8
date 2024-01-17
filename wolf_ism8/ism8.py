@@ -47,7 +47,7 @@ class Ism8(asyncio.Protocol):
         return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_RW_FLAG]
 
     @staticmethod
-    def get_value_area(dp_id: int):
+    def get_value_range(dp_id: int):
         """returns allowed values for write operations"""
         return DP_VALUES_ALLOWED.get(dp_id, tuple())
 
@@ -55,12 +55,6 @@ class Ism8(asyncio.Protocol):
     def get_library_version() -> str:
         """returns current implementation version"""
         return LIB_VERSION
-
-    @staticmethod
-    def get_step_value(dp_id: int):
-        """returns step value for datapoint"""
-        datatype = DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
-        return DATATYPES.get(datatype, ["", "", "", "", ""])[DT_STEP]
 
     @staticmethod
     def get_all_sensors() -> dict:
