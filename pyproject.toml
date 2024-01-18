@@ -8,6 +8,7 @@ version="3.0"
 description="Write and read data from wolf heating system via ISM8"
 readme = "README.md"
 authors = [{ name = "marcschmiedchen", email = "marc.schmiedchen@protonmail.com" }]
+license = {text = "MIT License"}
 classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python",
@@ -21,3 +22,4 @@ requires-python = ">=3.8"
 
 [project.urls]
 Repository = "https://github.com/marcschmiedchen/wolf_ism8"
+Issues = "https://github.com/marcschmiedchen/wolf_ism8/issues"
