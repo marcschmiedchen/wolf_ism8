@@ -105,6 +105,7 @@ async def main():
     # await test_write_DHWMode(ism8)
     # print("request all DP")
     # ism8.request_all_datapoints()
+    print(ism8.encode_datapoints(178, 19711))
     await asyncio.sleep(10)
     _server.close()
 
