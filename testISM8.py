@@ -95,7 +95,7 @@ async def main():
     print(ism8.get_all_devices())
 
     _server = await setup_server(ism8)
-    await wait_for_connection(ism8)
+    # await wait_for_connection(ism8)
     # await test_write_on_off(ism8)
     # await asyncio.sleep(5)
     # await test_write_float(ism8)
@@ -105,6 +105,7 @@ async def main():
     # await test_write_DHWMode(ism8)
     # print("request all DP")
     # ism8.request_all_datapoints()
+    ism8.send_dp_value(153, 1)
     await asyncio.sleep(10)
     _server.close()
 
