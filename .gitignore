@@ -7,4 +7,5 @@ wolf_ism8.egg-info
 __pycache__
 .github/workflows
 wolf_ism8/__pycache__/*.*
-
+wolf_ism8/__pycache__/ism8_constants.cpython-311.pyc
+wolf_ism8/__pycache__/ism8_constants.cpython-311.pyc

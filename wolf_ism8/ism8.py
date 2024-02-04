@@ -123,7 +123,7 @@ class Ism8(asyncio.Protocol):
             # then continue loop
             if len(data) < _header_ptr + msg_length:
                 Ism8.log.debug("Buffer shorter than expected / broken Message.")
-                Ism8.log.debug(f"Discarding: {data[_header_ptr:]}")
+                # Ism8.log.debug(f"Discarding: {data[_header_ptr:]}")
                 # setting Ptr to end of data will end loop
                 _header_ptr = len(data)
             else:
@@ -155,11 +155,11 @@ class Ism8(asyncio.Protocol):
             dp_id = msg[i + 6] * 256 + msg[i + 7]
             dp_length = msg[i + 9]
             dp_raw_value = bytearray(msg[i + 10 : i + 10 + dp_length])
-            Ism8.log.debug(
-                f"Processing DP-ID {dp_id},"
-                f"{DATAPOINTS.get(dp_id, 'unknown')[IX_NAME]},"
-                f"message: {dp_raw_value.hex(':')}"
-            )
+            # Ism8.log.debug(
+            #     f"Processing DP-ID {dp_id},"
+            #     f"{DATAPOINTS.get(dp_id, 'unknown')[IX_NAME]},"
+            #     f"message: {dp_raw_value.hex(':')}"
+            # )
             self.decode_datapoint(dp_id, dp_raw_value)
             # now advance byte counter and datapoint counter
             dp_ctr += 1
@@ -173,7 +173,7 @@ class Ism8(asyncio.Protocol):
         if dp_id in DATAPOINTS:
             dp_type = DATAPOINTS[dp_id][IX_TYPE]
         else:
-            Ism8.log.debug(f"unknown datapoint: {dp_id}, data:{raw_bytes}")
+            Ism8.log.info(f"unknown datapoint: {dp_id}, data:{raw_bytes}")
             return
 
         result = 0
@@ -218,7 +218,7 @@ class Ism8(asyncio.Protocol):
             self._dp_values[dp_id] = decode_dict(result, HVACContrModes)
 
         else:
-            Ism8.log.debug(f"datatype <{dp_type}> not implemented, fallback to INT.")
+            Ism8.log.info(f"datatype <{dp_type}> not implemented, fallback to INT.")
             self._dp_values[dp_id] = decode_Int(result)
 
         Ism8.log.debug(f"decoded {result} to {self._dp_values[dp_id]}")
@@ -229,7 +229,6 @@ class Ism8(asyncio.Protocol):
         sends values for a (writable) datapoint in ISM8. Before message is sent,
         several checks are performed
         """
-        Ism8.log.debug(value)
         if not self._connected or self._transport is None:
             Ism8.log.error("No Connection to ISM8 Module")
             return
@@ -304,7 +303,7 @@ class Ism8(asyncio.Protocol):
             return encode_dict(value, DHWModes)
 
         else:
-            Ism8.log.debug(f"writing datatype not implemented: {dp_type}")
+            Ism8.log.info(f"writing datatype not implemented: {dp_type}")
             return None
 
     def read_sensor(self, dp_id: int):

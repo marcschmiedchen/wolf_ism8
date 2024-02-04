@@ -18,7 +18,7 @@ def decode_dict(mode_number: int, mode_dic: dict) -> str:
         return mode_dic[mode_number]
     else:
         log.error(f"mode number {mode_number} not implemented:")
-        return ''
+        return ""
 
 
 def encode_dict(mode: str, mode_dic: dict) -> bytearray:
@@ -50,8 +50,8 @@ def decode_Bool(input: int) -> bool:
     return bool(input & 0b1)
 
 
-def encode_Bool(input: bool) -> bytearray:
-    return bytearray(b"\x01") if input is True else bytearray(b"\x00")
+def encode_Bool(input: int) -> bytearray:
+    return bytearray(b"\x01") if bool(input) is True else bytearray(b"\x00")
 
 
 def decode_Int(input: int) -> int:
@@ -64,7 +64,7 @@ def decode_Float(input: int) -> float:
     _mantisse = input & 0b0000011111111111
     if _mantisse == 0b0000011111111111:
         # according to WOLF specs, a mantisse with all bits set
-        # indicated invalid data
+        # indicates invalid data
         return None
     if _sign == 1:
         _mantisse = -(~(_mantisse - 1) & 0x07FF)
@@ -90,7 +90,7 @@ def encode_Float(input: float) -> bytearray:
     data[1] |= _mantisse & 0xFF
     for byte in data:
         encoded_float.append(byte)
-    log.debug(f"encoded {input} -> {encoded_float.hex(':')}")
+    # log.debug(f"encoded {input} -> {encoded_float.hex(':')}")
     return encoded_float
 
 
