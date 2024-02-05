@@ -151,15 +151,14 @@ class Ism8(asyncio.Protocol):
         # loop over datapoint counter, until all dps are processed
         dp_ctr = 1
         while dp_ctr <= max_dp:
-            # Ism8.log.debug("DP %d / %d in datagram:", dp_ctr, max_dp)
+            Ism8.log.debug("DP %d / %d in datagram:", dp_ctr, max_dp)
             dp_id = msg[i + 6] * 256 + msg[i + 7]
             dp_length = msg[i + 9]
             dp_raw_value = bytearray(msg[i + 10 : i + 10 + dp_length])
-            # Ism8.log.debug(
-            #     f"Processing DP-ID {dp_id},"
-            #     f"{DATAPOINTS.get(dp_id, 'unknown')[IX_NAME]},"
-            #     f"message: {dp_raw_value.hex(':')}"
-            # )
+            Ism8.log.debug(
+                "Processing DP-ID %d, %s, message: %s",
+                dp_id, DATAPOINTS.get(dp_id, 'unknown')[IX_NAME], dp_raw_value.hex(':')
+            )
             self.decode_datapoint(dp_id, dp_raw_value)
             # now advance byte counter and datapoint counter
             dp_ctr += 1
@@ -224,7 +223,7 @@ class Ism8(asyncio.Protocol):
             Ism8.log.info(f"datatype <{dp_type}> not implemented, fallback to INT.")
             self._dp_values[dp_id] = decode_Int(result)
 
-        # Ism8.log.debug(f"decoded {result} for DP {dp_id} to {self._dp_values[dp_id]}")
+        Ism8.log.debug("decoded %d to %s", result, self._dp_values[dp_id])
         return
 
     def send_dp_value(self, dp_id: int, value) -> None:
@@ -235,7 +234,6 @@ class Ism8(asyncio.Protocol):
         if not self._connected or self._transport is None:
             Ism8.log.error("No Connection to ISM8 Module")
             return
-
         # return if value is out of range
         if not validate_dp_range(dp_id, value):
             Ism8.log.error("Validation failed. data out of range.")
@@ -251,6 +249,10 @@ class Ism8(asyncio.Protocol):
             Ism8.log.debug(f"sending datapoint number {dp_id} as {encoded_value}")
             # now send message to ISM8
             self._transport.write(update_msg)
+            # after sending update internal cache
+            Ism8.log.debug(f"updating cache for {dp_id} with {value}")
+            self._dp_values[dp_id] = value
+        return
 
     def build_message(self, dp_id: int, encoded_value: bytearray):
         update_msg = bytearray()
