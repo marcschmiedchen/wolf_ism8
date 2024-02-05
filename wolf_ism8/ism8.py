@@ -224,7 +224,7 @@ class Ism8(asyncio.Protocol):
             Ism8.log.info(f"datatype <{dp_type}> not implemented, fallback to INT.")
             self._dp_values[dp_id] = decode_Int(result)
 
-        Ism8.log.debug(f"decoded {result} for {dp_id} to {self._dp_values[dp_id]}")
+        # Ism8.log.debug(f"decoded {result} for DP {dp_id} to {self._dp_values[dp_id]}")
         return
 
     def send_dp_value(self, dp_id: int, value) -> None:
@@ -238,7 +238,7 @@ class Ism8(asyncio.Protocol):
 
         # return if value is out of range
         if not validate_dp_range(dp_id, value):
-            Ism8.log.info("Validation failed. data out of range.")
+            Ism8.log.error("Validation failed. data out of range.")
             return
 
         # now encode the value according to ISM8 spec, depending on data-type
@@ -277,7 +277,7 @@ class Ism8(asyncio.Protocol):
         else:
             Ism8.log.error(f"unknown datapoint: {dp_id}, data: {value}")
             return
-       
+
         if dp_type in (
             "DPT_Switch",
             "DPT_Bool",
