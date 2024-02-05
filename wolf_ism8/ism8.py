@@ -209,7 +209,10 @@ class Ism8(asyncio.Protocol):
             self._dp_values[dp_id] = decode_Scaling(result)
 
         elif dp_type == "DPT_HVACMode":
-            self._dp_values[dp_id] = decode_dict(result, HVACModes)
+            if dp_id == 149:
+                self._dp_values[dp_id] = decode_dict(result, HVACModes_CWL)
+            else:
+                self._dp_values[dp_id] = decode_dict(result, HVACModes)
 
         elif dp_type == "DPT_DHWMode":
             self._dp_values[dp_id] = decode_dict(result, DHWModes)
@@ -221,7 +224,7 @@ class Ism8(asyncio.Protocol):
             Ism8.log.info(f"datatype <{dp_type}> not implemented, fallback to INT.")
             self._dp_values[dp_id] = decode_Int(result)
 
-        Ism8.log.debug(f"decoded {result} to {self._dp_values[dp_id]}")
+        Ism8.log.debug(f"decoded {result} for {dp_id} to {self._dp_values[dp_id]}")
         return
 
     def send_dp_value(self, dp_id: int, value) -> None:
@@ -233,13 +236,6 @@ class Ism8(asyncio.Protocol):
             Ism8.log.error("No Connection to ISM8 Module")
             return
 
-        # check if DP exists
-        if dp_id in DATAPOINTS:
-            dp_type = DATAPOINTS[dp_id][IX_TYPE]
-        else:
-            Ism8.log.error(f"unknown datapoint: {dp_id}, data: {value}")
-            return
-
         # return if value is out of range
         if not validate_dp_range(dp_id, value):
             Ism8.log.info("Validation failed. data out of range.")
@@ -247,12 +243,12 @@ class Ism8(asyncio.Protocol):
 
         # now encode the value according to ISM8 spec, depending on data-type
         # if encoding fails, None is returned an no data is sent
-        encoded_value = self.encode_datapoint(value, dp_type)
+        encoded_value = self.encode_datapoint(value, dp_id)
 
         if encoded_value is not None:
             # prepare frame with obj info
             update_msg = self.build_message(dp_id, encoded_value)
-            Ism8.log.debug(f"Setting DP nbr. {dp_id} to {encoded_value}")
+            Ism8.log.debug(f"sending datapoint number {dp_id} as {encoded_value}")
             # now send message to ISM8
             self._transport.write(update_msg)
 
@@ -274,7 +270,14 @@ class Ism8(asyncio.Protocol):
         update_msg[5] = frame_size[1]
         return update_msg
 
-    def encode_datapoint(self, value, dp_type):
+    def encode_datapoint(self, value, dp_id):
+        # check if DP exists
+        if dp_id in DATAPOINTS:
+            dp_type = DATAPOINTS[dp_id][IX_TYPE]
+        else:
+            Ism8.log.error(f"unknown datapoint: {dp_id}, data: {value}")
+            return
+       
         if dp_type in (
             "DPT_Switch",
             "DPT_Bool",
@@ -296,8 +299,12 @@ class Ism8(asyncio.Protocol):
         elif dp_type == "DPT_Scaling":
             return encode_Scaling(value)
 
+        # special treatment for point 149 (CWL) according to wolf specs
         elif dp_type == "DPT_HVACMode":
-            return encode_dict(value, HVACModes)
+            if dp_id == 149:
+                return encode_dict(value, HVACModes_CWL)
+            else:
+                return encode_dict(value, HVACModes)
 
         elif dp_type == "DPT_DHWMode":
             return encode_dict(value, DHWModes)

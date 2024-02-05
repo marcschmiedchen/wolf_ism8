@@ -1,7 +1,7 @@
 import datetime
 from time import time
 
-LIB_VERSION = "3.01"
+LIB_VERSION = "3.0.1"
 ISM_HEADER = b"\x06\x20\xf0\x80"
 ISM_CONN_HEADER = b"\x04\x00\x00\x00"
 ISM_SERVICE_RECEIVE = b"\xF0\x06"
@@ -328,10 +328,56 @@ DATAPOINTS = {
     ),
 }
 
+HVACModes = {
+    0: "Automatikbetrieb",
+    1: "Heizbetrieb",
+    2: "Standby",
+    3: "Sparbetrieb",
+    4: "Gebäudeschutz",
+}
+
+HVACModes_CWL = {
+    0: "Automatikbetrieb",
+    1: "Nennlüftung",
+    2: "Standby",
+    3: "Red. Lüftung",
+    4: "Feuchteschutz",
+}
+
+HVACContrModes = {
+    0: "Schornsteinfeger / LegioProtect",
+    1: "Heizbetrieb",
+    2: "Vorwärmung",
+    3: "Aktive Kühlung",
+    4: "Night Purge",
+    5: "Precool",
+    6: "Standby",
+    7: "Test",
+    8: "Emergency Heat",
+    9: "Fan Only",
+    10: "Free Cool",
+    11: "Frostschutz",
+    12: "Maximum Heating Mode",
+    13: "Economic Heat/Cool Mode",
+    14: "Dehumidification",
+    15: "Kalibration",
+    16: "Emergency Cool Mode",
+    17: "Emergency Steam Mode",
+    20: "NoDem",
+}
+
+DHWModes = {
+    0: "Automatikbetrieb",
+    1: "LegioProtect",
+    2: "Dauerbetrieb",
+    3: "Reduced",
+    4: "Standby",
+}
+
 DP_VALUES_ALLOWED = {
     56: tuple(range(20, 81, 1)),
-    57: ("Auto", "Comfort", "Standby", "Economy"),
-    58: ("Auto", "Normal", "Off"),
+    57: (HVACModes[0], HVACModes[1], HVACModes[2], HVACModes[3], HVACModes[4]),
+    58: (DHWModes[0], DHWModes[2], DHWModes[4]),
     59: (0, 1),
     60: (0, 1),
     61: (0, 1),
@@ -341,8 +387,8 @@ DP_VALUES_ALLOWED = {
     65: tuple([(i / 10) for i in range(-40, 45, 5)]),
     66: tuple([(i / 10) for i in range(0, 105, 5)]),
     69: tuple(range(20, 81, 1)),
-    70: ("Auto", "Comfort", "Standby", "Economy"),
-    71: ("Auto", "Normal", "Off"),
+    70: (HVACModes[0], HVACModes[1], HVACModes[2], HVACModes[3], HVACModes[4]),
+    71: (DHWModes[0], DHWModes[2], DHWModes[4]),
     72: (0, 1),
     73: (0, 1),
     74: (0, 1),
@@ -353,8 +399,8 @@ DP_VALUES_ALLOWED = {
     78: tuple([(i / 10) for i in range(-40, 45, 5)]),
     79: tuple([(i / 10) for i in range(0, 105, 5)]),
     82: tuple(range(20, 81, 1)),
-    83: ("Auto", "Comfort", "Standby", "Economy"),
-    84: ("Auto", "Normal", "Off"),
+    83: (HVACModes[0], HVACModes[1], HVACModes[2], HVACModes[3], HVACModes[4]),
+    84: (DHWModes[0], DHWModes[2], DHWModes[4]),
     85: (0, 1),
     86: (0, 1),
     87: (0, 1),
@@ -364,8 +410,8 @@ DP_VALUES_ALLOWED = {
     91: tuple([(i / 10) for i in range(-40, 45, 5)]),
     92: tuple([(i / 10) for i in range(0, 105, 5)]),
     95: tuple(range(20, 81, 1)),
-    96: ("Auto", "Comfort", "Standby", "Economy"),
-    97: ("Auto", "Normal", "Off"),
+    96: (HVACModes[0], HVACModes[1], HVACModes[2], HVACModes[3], HVACModes[4]),
+    97: (DHWModes[0], DHWModes[2], DHWModes[4]),
     98: (0, 1),
     99: (0, 1),
     100: (0, 1),
@@ -374,7 +420,7 @@ DP_VALUES_ALLOWED = {
     103: (0, 1),
     104: tuple([(i / 10) for i in range(-40, 45, 5)]),
     105: tuple([(i / 10) for i in range(0, 105, 5)]),
-    149: ("Auto", "Comfort", "Economy", "Building Protection"),
+    149: (HVACModes_CWL[0], HVACModes_CWL[1], HVACModes_CWL[3], HVACModes_CWL[4]),
     150: (0, 1),
     151: (0, 1),
     152: (0, 1),
@@ -430,42 +476,4 @@ DATATYPES = {
     "DPT_HVACMode": (0, 4, str, 1, None, 1),
     "DPT_DHWMode": (0, 4, str, 1, None, 1),
     "DPT_HVACContrMode": (0, 20, str, 1, None, 1),
-}
-
-HVACModes = {
-    0: "Auto",
-    1: "Comfort",
-    2: "Standby",
-    3: "Economy",
-    4: "Building Protection",
-}
-
-HVACContrModes = {
-    0: "Auto",
-    1: "Heat",
-    2: "Morning Warmup",
-    3: "Cool",
-    4: "Night Purge",
-    5: "Precool",
-    6: "Off",
-    7: "Test",
-    8: "Emergency Heat",
-    9: "Fan Only",
-    10: "Free Cool",
-    11: "Ice",
-    12: "Maximum Heating Mode",
-    13: "Economic Heat/Cool Mode",
-    14: "Dehumidification",
-    15: "Calibration Mode",
-    16: "Emergency Cool Mode",
-    17: "Emergency Steam Mode",
-    20: "NoDem",
-}
-
-DHWModes = {
-    0: "Auto",
-    1: "LegioProtect",
-    2: "Normal",
-    3: "Reduced",
-    4: "Off",
 }
