@@ -1,4 +1,5 @@
 import logging
+import datetime
 from .ism8_constants import (
     DATAPOINTS,
     DATATYPES,
@@ -92,6 +93,38 @@ def encode_Float(input: float) -> bytearray:
         encoded_float.append(byte)
     # log.debug(f"encoded {input} -> {encoded_float.hex(':')}")
     return encoded_float
+
+
+def decode_date(input: int) -> datetime.date:
+    year = input & 0b000000000000000001111111
+    month = (input & 0b000000000000111100000000) >> 8
+    day = (input & 0b000111110000000000000000) >> 16
+    return datetime.date(year, month, day)
+
+
+def encode_date(input: datetime.date) -> bytearray:
+    encoded_date = bytearray()
+    encoded_date.append(input.year - 2000)
+    encoded_date.append(input.month)
+    encoded_date.append(input.day)
+    log.debug(f"encoded {input} -> {encoded_date.hex(':')}")
+    return encoded_date
+
+
+def decode_time_of_day(input: int) -> datetime.time:
+    seconds = input & 0b000000000000000000111111
+    minutes = (input & 0b000000000011111100000000) >> 8
+    hours = (input & 0b000111110000000000000000) >> 16
+    return datetime.time(hour=hours, minute=minutes, second=seconds)
+
+
+def encode_time_of_day(input: datetime.time) -> bytearray:
+    encoded_time = bytearray()
+    encoded_time.append(input.second)
+    encoded_time.append(input.minute)
+    encoded_time.append(input.hour)
+    log.debug(f"encoded {input} -> {encoded_time.hex(':')}")
+    return encoded_time
 
 
 def validate_dp_range(dp_id: int, value) -> bool:

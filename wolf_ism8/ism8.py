@@ -1,6 +1,7 @@
 """
 Module for gathering info and sending commands from/to Wolf HVAC System via ISM8 adapter
 """
+
 import logging
 import asyncio
 
@@ -157,7 +158,9 @@ class Ism8(asyncio.Protocol):
             dp_raw_value = bytearray(msg[i + 10 : i + 10 + dp_length])
             Ism8.log.debug(
                 "Processing DP-ID %d, %s, message: %s",
-                dp_id, DATAPOINTS.get(dp_id, 'unknown')[IX_NAME], dp_raw_value.hex(':')
+                dp_id,
+                DATAPOINTS.get(dp_id, "unknown")[IX_NAME],
+                dp_raw_value.hex(":"),
             )
             self.decode_datapoint(dp_id, dp_raw_value)
             # now advance byte counter and datapoint counter
@@ -219,6 +222,12 @@ class Ism8(asyncio.Protocol):
         elif dp_type == "DPT_HVACContrMode":
             self._dp_values[dp_id] = decode_dict(result, HVACContrModes)
 
+        elif dp_type == "DPT_Date":
+            self._dp_values[dp_id] = decode_date(result)
+
+        elif dp_type == "DPT_TimeOfDay":
+            self._dp_values[dp_id] = decode_time_of_day(result)
+
         else:
             Ism8.log.info(f"datatype <{dp_type}> not implemented, fallback to INT.")
             self._dp_values[dp_id] = decode_Int(result)
@@ -247,6 +256,7 @@ class Ism8(asyncio.Protocol):
             # prepare frame with obj info
             update_msg = self.build_message(dp_id, encoded_value)
             Ism8.log.debug(f"sending datapoint number {dp_id} as {encoded_value}")
+            Ism8.log.debug(f"update msg = {update_msg}")
             # now send message to ISM8
             self._transport.write(update_msg)
             # after sending update internal cache
@@ -310,6 +320,12 @@ class Ism8(asyncio.Protocol):
 
         elif dp_type == "DPT_DHWMode":
             return encode_dict(value, DHWModes)
+
+        elif dp_type == "DPT_Date":
+            return encode_date(value)
+
+        elif dp_type == "DPT_TimeOfDay":
+            return encode_time_of_day(value)
 
         else:
             Ism8.log.info(f"writing datatype not implemented: {dp_type}")

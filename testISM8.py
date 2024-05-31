@@ -1,5 +1,6 @@
 import logging
 import asyncio
+import datetime
 import wolf_ism8 as wolf
 
 
@@ -37,6 +38,60 @@ async def test_write_float(tst_ism8: wolf.Ism8):
     print("trying to change warmwasserSollTemp to 51.4")
     tst_ism8.send_dp_value(56, 51.8)
     await asyncio.sleep(10)
+
+
+async def test_date_implementation(tst_ism8: wolf.Ism8):
+    """ """
+    print("trying to encode date 2024-05-30")
+    tst_ism8.encode_datapoint(datetime.date(2024, 5, 30), 154)
+    print("\n")
+
+    # return if value is out of range
+    if not wolf.validate_dp_range(154, datetime.date(2024, 5, 30)):
+        print("Validation error. Should pass")
+        return
+
+    # return if value is out of range
+    print("trying to encode date 2100-05-30. should be out of range")
+    if wolf.validate_dp_range(154, datetime.date(2100, 5, 30)):
+        print("Validation error. Should fail")
+        return
+    print("\n")
+
+    # decoding tests
+    print("trying to decode date 2007-06-04")
+    test_bytes = bytearray(b"\x04\x06\x07")
+    tst_ism8.decode_datapoint(159, test_bytes)
+
+    print("trying to decode date 2032-12-20")
+    test_bytes = bytearray(b"\x14\x0C\x20")
+    # 20.12.2016
+    tst_ism8.decode_datapoint(159, test_bytes)
+
+    print("trying to decode date 2048-12-48 (!) should fail")
+    test_bytes = bytearray(b"\x30\x0C\x30")
+    # 20.12.2016
+    tst_ism8.decode_datapoint(159, test_bytes)
+    print("\n")
+
+
+async def test_time_of_day_implementation(tst_ism8: wolf.Ism8):
+    """ """
+    print("trying to encode timeofday 12:00")
+    tst_ism8.encode_datapoint(datetime.time(hour=12, minute=0), 161)
+
+    # decoding tests
+    print("trying to decode time 22:06:07")
+    test_bytes = bytearray(b"\x16\x06\x07")
+    tst_ism8.decode_datapoint(161, test_bytes)
+
+    print("trying to decode time 00:00:00")
+    test_bytes = bytearray(b"\x00\x00\x00")
+    tst_ism8.decode_datapoint(161, test_bytes)
+
+    print("trying to decode time 48:12:116 (!) should fail, but datetime is robust")
+    test_bytes = bytearray(b"\x30\x0C\x60")
+    tst_ism8.decode_datapoint(161, test_bytes)
 
 
 async def test_write_scaling(tst_ism8: wolf.Ism8):
@@ -90,16 +145,25 @@ async def test_write_DHWMode(tst_ism8: wolf.Ism8):
 async def main():
     ism8 = wolf.Ism8()
     # for keys, values in wolf.DATAPOINTS.items():
-    #    _LOGGER.debug(f"{keys}:  {values}")
+    # #    _LOGGER.debug(f"{keys}:  {values}")
+    # _LOGGER.debug(bytearray([round(34 / (100 / 255))]))
+    # _LOGGER.debug(bytearray(round(33 / (100 / 255))))
+    # _LOGGER.debug(bytearray(b"\x01"))
+    # _LOGGER.debug(len(bytearray(b"\x01")))
+    # _LOGGER.debug(bytearray(b"\x00"))
+    # _LOGGER.debug([round(33.0 / (100 / 255))])
+    # _LOGGER.debug(bytearray([84]))
+    # _LOGGER.debug(len(bytearray([84])))
+    # print(ism8.get_all_devices())
 
-    print(ism8.get_all_devices())
-
-    _server = await setup_server(ism8)
-    await wait_for_connection(ism8)
-    await test_write_on_off(ism8)
+    # _server = await setup_server(ism8)
+    # await wait_for_connection(ism8)
+    # await test_write_on_off(ism8)
     # await asyncio.sleep(5)
     # await test_write_float(ism8)
     # await test_write_HVACMode149(ism8)
+    await test_date_implementation(ism8)
+    await test_time_of_day_implementation(ism8)
     # print (ism8.get_value_area(57))
     # await test_write_HVACMode57(ism8)
     # await test_write_DHWMode(ism8)
@@ -107,8 +171,8 @@ async def main():
     # ism8.request_all_datapoints()
     # print(ism8.encode_datapoint(178, 19711))
     # ism8.send_dp_value(153, 1)
-    await asyncio.sleep(10)
-    _server.close()
+    # await asyncio.sleep(10)
+    # _server.close()
 
 
 if __name__ == "__main__":
