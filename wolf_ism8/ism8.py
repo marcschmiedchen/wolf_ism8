@@ -72,6 +72,8 @@ class Ism8(asyncio.Protocol):
         self._dp_values = {}
         self._transport = None
         self._connected = False
+        # the callbacks for all datapoints are stored in a dictionary
+        self._callback_on_data = {}
         return
 
     def factory(self):
@@ -99,6 +101,15 @@ class Ism8(asyncio.Protocol):
         self._connected = False
         if self._transport:
             self._transport.close()
+
+    def register_callback(self, cb, dp_nbr):
+        self._callback_on_data.update({dp_nbr: cb})
+
+    def remove_callback(self, dp_nbr):
+        self._callback_on_data.pop(dp_nbr)
+
+    def connected(self):
+        return self._connected
 
     def data_received(self, data) -> None:
         """is called whenever data is ready. Conducts buffering, slices the messages
@@ -233,6 +244,11 @@ class Ism8(asyncio.Protocol):
             self._dp_values[dp_id] = decode_Int(result)
 
         Ism8.log.debug("decoded %d to %s", result, self._dp_values[dp_id])
+        if dp_id in self._callback_on_data.keys():
+            Ism8.log.debug(f"calling callback for dp_id {dp_id}.")
+            self._callback_on_data[dp_id]()
+        else:
+            Ism8.log.debug(f"no callback for dp_id {dp_id}.")
         return
 
     def send_dp_value(self, dp_id: int, value) -> None:
