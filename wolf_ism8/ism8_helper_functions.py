@@ -99,7 +99,7 @@ def decode_date(input: int) -> datetime.date:
     year = input & 0b000000000000000001111111
     month = (input & 0b000000000000111100000000) >> 8
     day = (input & 0b000111110000000000000000) >> 16
-    return datetime.date(year, month, day)
+    return datetime.date(year + 2000, month, day)
 
 
 def encode_date(input: datetime.date) -> bytearray:

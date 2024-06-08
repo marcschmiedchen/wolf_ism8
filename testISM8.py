@@ -74,6 +74,10 @@ async def test_date_implementation(tst_ism8: wolf.Ism8):
     tst_ism8.decode_datapoint(159, test_bytes)
     print("\n")
 
+    print("trying to decode date from github log 1")
+    test_bytes = bytearray(b"\x15\x05\x18")
+    tst_ism8.decode_datapoint(155, test_bytes)
+
 
 async def test_time_of_day_implementation(tst_ism8: wolf.Ism8):
     """ """
@@ -88,6 +92,14 @@ async def test_time_of_day_implementation(tst_ism8: wolf.Ism8):
     print("trying to decode time 00:00:00")
     test_bytes = bytearray(b"\x00\x00\x00")
     tst_ism8.decode_datapoint(161, test_bytes)
+
+    print("trying to decode time from github log 1")
+    test_bytes = bytearray(b"\x0d\x38\x00")
+    tst_ism8.decode_datapoint(156, test_bytes)
+
+    print("trying to decode time from github log 1")
+    test_bytes = bytearray(b"\x10\x38\x00")
+    tst_ism8.decode_datapoint(157, test_bytes)
 
     print("trying to decode time 48:12:116 (!) should fail, but datetime is robust")
     test_bytes = bytearray(b"\x30\x0C\x60")
