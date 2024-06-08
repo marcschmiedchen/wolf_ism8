@@ -1,10 +1,16 @@
-3.0.1 (2024-02-05)
+3.1 (2024-06-08)
 ------------------
+
+New
+~~~
+- added support for TIME and DATE datapoints, read and write
+- added callback-functionality to realize push-integration in home assistant
 
 Fixes
 ~~~~~~~
-- after sending data to ISM8, update the cache accordingly
-- fixed error when sending boolean values
+- one datapoint was missing. Fixed that. 
+------------------
+
 
 
 3.0 (2024-01-18)
