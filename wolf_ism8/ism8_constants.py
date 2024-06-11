@@ -1,7 +1,7 @@
 import datetime
 from time import time
 
-LIB_VERSION = "3.0.1"
+LIB_VERSION = "3.1.1"
 ISM_HEADER = b"\x06\x20\xf0\x80"
 ISM_CONN_HEADER = b"\x04\x00\x00\x00"
 ISM_SERVICE_RECEIVE = b"\xF0\x06"
@@ -428,7 +428,13 @@ DP_VALUES_ALLOWED = {
     153: (0, 1),
     154: (datetime.date(1900, 1, 1), datetime.date(2099, 12, 31)),
     155: (datetime.date(1900, 1, 1), datetime.date(2099, 12, 31)),
+    156: (datetime.time(0, 0, 0), datetime.time(23, 59, 59)),
+    157: (datetime.time(0, 0, 0), datetime.time(23, 59, 59)),
     158: (0, 1),
+    159: (datetime.date(2000, 1, 1), datetime.date(2099, 12, 31)),
+    160: (datetime.date(2000, 1, 1), datetime.date(2099, 12, 31)),
+    161: (datetime.time(0, 0, 0), datetime.time(23, 59, 59)),
+    162: (datetime.time(0, 0, 0), datetime.time(23, 59, 59)),
     193: (0, 1),
     194: (0, 1),
     198: tuple(range(0, 101, 1)),

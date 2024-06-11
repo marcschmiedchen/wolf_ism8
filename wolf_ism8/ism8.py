@@ -34,6 +34,11 @@ class Ism8(asyncio.Protocol):
         return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
 
     @staticmethod
+    def get_version() -> str:
+        """returns library version"""
+        return LIB_VERSION
+
+    @staticmethod
     def get_unit(dp_id: int) -> str:
         """returns datapoint unit from static Dictionary"""
         if dp_id in DATAPOINTS:
