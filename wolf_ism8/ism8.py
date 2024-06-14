@@ -214,14 +214,27 @@ class Ism8(asyncio.Protocol):
             "DPT_Power",
             "DPT_Value_Volume_Flow",
         ):
-            if decode_Float(result) is not None:
-                self._dp_values[dp_id] = decode_Float(result)
+            temp_value = decode_Float(result)
+            if temp_value is None or (
+                decode_Float(result) > 1000 and dp_type == "DPT_Power"
+            ):
+                # ignore invalid data, not clear where it comes from...
+                Ism8.log.debug("discarding %s, out of range", temp_value)
+                return
+            else:
+                self._dp_values[dp_id] = temp_value
 
         elif dp_type in ("DPT_ActiveEnergy", "DPT_ActiveEnergy_kWh"):
             self._dp_values[dp_id] = decode_Int(result)
 
         elif dp_type == "DPT_FlowRate_m3/h":
-            self._dp_values[dp_id] = 0.0001 * decode_Int(result)
+            temp_value = 0.0001 * decode_Int(result)
+            # ignore wrong data , not clear where it comes from...
+            if temp_value > 1000:
+                Ism8.log.debug("discarding %s, out of range", temp_value)
+                return
+            else:
+                self._dp_values[dp_id] = temp_value
 
         elif dp_type == "DPT_Scaling":
             self._dp_values[dp_id] = decode_Scaling(result)
@@ -249,6 +262,7 @@ class Ism8(asyncio.Protocol):
             self._dp_values[dp_id] = decode_Int(result)
 
         Ism8.log.debug("decoded %d to %s", result, self._dp_values[dp_id])
+
         if dp_id in self._callback_on_data.keys():
             Ism8.log.debug(f"calling callback for dp_id {dp_id}.")
             self._callback_on_data[dp_id]()

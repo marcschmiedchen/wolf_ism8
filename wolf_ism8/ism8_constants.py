@@ -1,7 +1,6 @@
 import datetime
-from time import time
 
-LIB_VERSION = "3.1.1"
+LIB_VERSION = "3.2"
 ISM_HEADER = b"\x06\x20\xf0\x80"
 ISM_CONN_HEADER = b"\x04\x00\x00\x00"
 ISM_SERVICE_RECEIVE = b"\xF0\x06"
@@ -117,7 +116,7 @@ DATAPOINTS = {
     90: ("Mischerkreis2", "Warmwasser Zeitprogramm 3", "DPT_Switch", True),
     91: ("Mischerkreis2", "Sollwertkorrektur", "DPT_Tempd", True),
     92: ("Mischerkreis2", "Sparfaktor", "DPT_Tempd", True),
-    80: ("Mischerkreis3", "Stoerung", "DPT_Switch", False),
+    93: ("Mischerkreis3", "Stoerung", "DPT_Switch", False),
     94: ("Mischerkreis3", "Raumtemperatur", "DPT_Value_Temp", False),
     95: ("Mischerkreis3", "Warmwassersolltemperatur", "DPT_Value_Temp", True),
     96: ("Mischerkreis3", "Programmwahl Mischer", "DPT_HVACMode", True),
