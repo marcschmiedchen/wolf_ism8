@@ -1,9 +1,14 @@
-3.1.1 (2024-06-11)
+3.2 (2024-06-14)
 ------------------
 
 New
 ~~~
 - added reporting of version number
+- added data integrity checks
+
+Fixes
+~~~~~~~
+- fixed errors in datapoint dictionary definition
 
 ------------------
 
