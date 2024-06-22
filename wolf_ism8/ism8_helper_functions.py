@@ -7,7 +7,6 @@ from .ism8_constants import (
     DT_PYTHONTYPE,
     IX_RW_FLAG,
     IX_TYPE,
-    DHWModes,
 )
 
 log = logging.getLogger(__name__)
@@ -22,7 +21,7 @@ def decode_dict(mode_number: int, mode_dic: dict) -> str:
         return ""
 
 
-def encode_dict(mode: str, mode_dic: dict) -> bytearray:
+def encode_dict(mode: str, mode_dic: dict) -> bytearray | None:
     """encodes a string into corresponding ISM-Mode numbers"""
     entry_list = [item[0] for item in mode_dic.items() if item[1] == mode]
     if not entry_list:
@@ -59,7 +58,7 @@ def decode_Int(input: int) -> int:
     return int(input)
 
 
-def decode_Float(input: int) -> float:
+def decode_Float(input: int) -> float | None:
     _sign = (input & 0b1000000000000000) >> 15
     _exponent = (input & 0b0111100000000000) >> 11
     _mantisse = input & 0b0000011111111111
@@ -141,21 +140,14 @@ def validate_dp_range(dp_id: int, value) -> bool:
     dp_type = DATAPOINTS[dp_id][IX_TYPE]
     python_datatype = DATATYPES[dp_type][DT_PYTHONTYPE]
     if not isinstance(value, python_datatype):
-        log.error(
-            f"value for {dp_id} should be {python_datatype}, but is {type(value)},"
-        )
+        log.error(f"DP {dp_id} should be {python_datatype}, but is {type(value)}")
         return False
 
     # check if value is in allowed range
     if isinstance(value, str):
-        if dp_type == "DPT_HVACMode":
-            if value not in DP_VALUES_ALLOWED[dp_id]:
-                log.error(f"value {value} is out of range")
-                return False
-        elif dp_type == "DPT_DHWMode":
-            if value not in DHWModes.values():
-                log.error(f"value {value} is out of range")
-                return False
+        if value not in DP_VALUES_ALLOWED[dp_id]:
+            log.error(f"value {value} is out of range")
+            return False
     else:
         if (value > max(DP_VALUES_ALLOWED[dp_id])) or (
             value < min(DP_VALUES_ALLOWED[dp_id])

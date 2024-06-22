@@ -89,7 +89,7 @@ class Ism8(asyncio.Protocol):
         req_msg = bytearray(ISM_REQ_DP_MSG)
         Ism8.log.debug("Sending REQ_ALL_DP: %s ", req_msg.hex(":"))
         if self._transport:
-            self._transport.write(req_msg)
+            self._transport.write(req_msg)  # type: ignore
 
     def connection_made(self, transport) -> None:
         """is called as soon as an ISM8 connects to server"""
@@ -150,7 +150,7 @@ class Ism8(asyncio.Protocol):
                 ack_msg[12] = data[_header_ptr + 12]
                 ack_msg[13] = data[_header_ptr + 13]
                 if self._transport:
-                    self._transport.write(ack_msg)
+                    self._transport.write(ack_msg)  # type: ignore
                 # process message without header (first 10 bytes)
                 self.process_msg(data[_header_ptr + 10 : _header_ptr + msg_length])
                 # prepare to get next message; advance Ptr to next Msg
@@ -215,9 +215,7 @@ class Ism8(asyncio.Protocol):
             "DPT_Value_Volume_Flow",
         ):
             temp_value = decode_Float(result)
-            if temp_value is None or (
-                decode_Float(result) > 1000 and dp_type == "DPT_Power"
-            ):
+            if temp_value is None or (temp_value > 1000 and dp_type == "DPT_Power"):
                 # ignore invalid data, not clear where it comes from...
                 Ism8.log.debug("discarding %s, out of range", temp_value)
                 return
@@ -275,14 +273,14 @@ class Ism8(asyncio.Protocol):
         sends values for a (writable) datapoint in ISM8. Before message is sent,
         several checks are performed
         """
-        if not self._connected or self._transport is None:
-            Ism8.log.error("No Connection to ISM8 Module")
-            return
         # return if value is out of range
         if not validate_dp_range(dp_id, value):
             Ism8.log.error("Validation failed. data out of range.")
             return
 
+        if not self._connected or self._transport is None:
+            Ism8.log.error("No Connection to ISM8 Module")
+            return
         # now encode the value according to ISM8 spec, depending on data-type
         # if encoding fails, None is returned an no data is sent
         encoded_value = self.encode_datapoint(value, dp_id)
@@ -293,7 +291,7 @@ class Ism8(asyncio.Protocol):
             Ism8.log.debug(f"sending datapoint number {dp_id} as {encoded_value}")
             Ism8.log.debug(f"update msg = {update_msg}")
             # now send message to ISM8
-            self._transport.write(update_msg)
+            self._transport.write(update_msg)  # type: ignore
             # after sending update internal cache
             Ism8.log.debug(f"updating cache for {dp_id} with {value}")
             self._dp_values[dp_id] = value

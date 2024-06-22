@@ -1,3 +1,11 @@
+3.2.1 (2024-06-21)
+------------------
+
+Fixes
+~~~~~~~
+- fixed some minor bugs, streamlined validation
+
+
 3.2 (2024-06-14)
 ------------------
 
