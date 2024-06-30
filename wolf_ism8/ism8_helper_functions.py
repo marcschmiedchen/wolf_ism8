@@ -103,9 +103,9 @@ def decode_date(input: int) -> datetime.date:
 
 def encode_date(input: datetime.date) -> bytearray:
     encoded_date = bytearray()
-    encoded_date.append(input.year - 2000)
-    encoded_date.append(input.month)
     encoded_date.append(input.day)
+    encoded_date.append(input.month)
+    encoded_date.append(input.year - 2000)
     log.debug(f"encoded {input} -> {encoded_date.hex(':')}")
     return encoded_date
 

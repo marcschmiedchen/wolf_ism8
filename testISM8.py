@@ -78,6 +78,12 @@ async def test_date_implementation(tst_ism8: wolf.Ism8):
     test_bytes = bytearray(b"\x15\x05\x18")
     tst_ism8.decode_datapoint(155, test_bytes)
 
+    print("encode/decode roundtrip")
+    test_bytes = tst_ism8.encode_datapoint(datetime.date(2024, 5, 30), 154)
+    test_date = tst_ism8.decode_datapoint(155, test_bytes)
+    print(tst_ism8._dp_values[155])
+    assert tst_ism8._dp_values[155] == datetime.date(2024, 5, 30)
+
 
 async def test_time_of_day_implementation(tst_ism8: wolf.Ism8):
     """ """
@@ -168,7 +174,7 @@ async def main():
     # _LOGGER.debug(len(bytearray([84])))
     print(ism8.get_all_devices())
 
-    _server = await setup_server(ism8)
+    # _server = await setup_server(ism8)
     # await wait_for_connection(ism8)
     # await test_write_on_off(ism8)
     # await asyncio.sleep(5)
@@ -179,14 +185,14 @@ async def main():
     print(ism8.get_value_range(57))
     print(ism8.get_value_range(157))
     print(ism8.get_value_range(158))
-    await test_write_HVACMode57(ism8)
-    await test_write_DHWMode(ism8)
-    print("request all DP")
-    ism8.request_all_datapoints()
+    # await test_write_HVACMode57(ism8)
+    # await test_write_DHWMode(ism8)
+    # print("request all DP")
+    # ism8.request_all_datapoints()
     print(ism8.encode_datapoint(19711, 178))
-    ism8.send_dp_value(153, 1)
+    # ism8.send_dp_value(153, 1)
     await asyncio.sleep(10)
-    _server.close()
+    # _server.close()
 
 
 if __name__ == "__main__":
