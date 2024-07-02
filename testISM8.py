@@ -80,7 +80,7 @@ async def test_date_implementation(tst_ism8: wolf.Ism8):
 
     print("encode/decode roundtrip")
     test_bytes = tst_ism8.encode_datapoint(datetime.date(2024, 5, 30), 154)
-    test_date = tst_ism8.decode_datapoint(155, test_bytes)
+    tst_ism8.decode_datapoint(155, test_bytes)
     print(tst_ism8._dp_values[155])
     assert tst_ism8._dp_values[155] == datetime.date(2024, 5, 30)
 
@@ -110,6 +110,12 @@ async def test_time_of_day_implementation(tst_ism8: wolf.Ism8):
     print("trying to decode time 48:12:116 (!) should fail, but datetime is robust")
     test_bytes = bytearray(b"\x30\x0C\x60")
     tst_ism8.decode_datapoint(161, test_bytes)
+
+    print("encode/decode roundtrip")
+    test_bytes = tst_ism8.encode_datapoint(datetime.time(hour=15, minute=38), 156)
+    tst_ism8.decode_datapoint(156, test_bytes)
+    print(tst_ism8._dp_values[156])
+    assert tst_ism8._dp_values[156] == datetime.time(hour=15, minute=38)
 
 
 async def test_write_scaling(tst_ism8: wolf.Ism8):
@@ -182,14 +188,14 @@ async def main():
     # await test_write_HVACMode149(ism8)
     await test_date_implementation(ism8)
     await test_time_of_day_implementation(ism8)
-    print(ism8.get_value_range(57))
-    print(ism8.get_value_range(157))
-    print(ism8.get_value_range(158))
+    # print(ism8.get_value_range(57))
+    # print(ism8.get_value_range(157))
+    # print(ism8.get_value_range(158))
     # await test_write_HVACMode57(ism8)
     # await test_write_DHWMode(ism8)
     # print("request all DP")
     # ism8.request_all_datapoints()
-    print(ism8.encode_datapoint(19711, 178))
+    # print(ism8.encode_datapoint(19711, 178))
     # ism8.send_dp_value(153, 1)
     await asyncio.sleep(10)
     # _server.close()

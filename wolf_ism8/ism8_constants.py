@@ -1,6 +1,6 @@
 import datetime
 
-LIB_VERSION = "3.2.2"
+LIB_VERSION = "3.2.4"
 ISM_HEADER = b"\x06\x20\xf0\x80"
 ISM_CONN_HEADER = b"\x04\x00\x00\x00"
 ISM_SERVICE_RECEIVE = b"\xF0\x06"

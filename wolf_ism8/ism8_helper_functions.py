@@ -119,9 +119,9 @@ def decode_time_of_day(input: int) -> datetime.time:
 
 def encode_time_of_day(input: datetime.time) -> bytearray:
     encoded_time = bytearray()
-    encoded_time.append(input.second)
-    encoded_time.append(input.minute)
     encoded_time.append(input.hour)
+    encoded_time.append(input.minute)
+    encoded_time.append(input.second)
     log.debug(f"encoded {input} -> {encoded_time.hex(':')}")
     return encoded_time
 
