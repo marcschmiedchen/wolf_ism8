@@ -1,3 +1,9 @@
+3.2.5 (2024-12-12)
+------------------
+Added
+~~~~~~~
+- some CHA ControlModes which were missing from Wolf documentation
+
 3.2.4 (2024-07-02)
 ------------------
 Fixes

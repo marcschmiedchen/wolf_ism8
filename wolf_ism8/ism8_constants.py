@@ -334,6 +334,10 @@ HVACModes = {
     2: "Standby",
     3: "Sparbetrieb",
     4: "Gebäudeschutz",
+    5: "unbekannt",
+    6: "Permanentbetrieb kühlen",
+    7: "Automatikbetrieb heizen",
+    8: "Automatikbetrieb kühlen",
 }
 
 HVACModes_CWL = {
@@ -345,7 +349,7 @@ HVACModes_CWL = {
 }
 
 HVACContrModes = {
-    0: "Schornsteinfeger / LegioProtect",
+    0: "Auto",
     1: "Heizbetrieb",
     2: "Vorwärmung",
     3: "Aktive Kühlung",
