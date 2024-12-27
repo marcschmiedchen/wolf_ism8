@@ -368,12 +368,11 @@ class Ism8(asyncio.Protocol):
         elif dp_type == "DPT_Scaling":
             return encode_Scaling(value)
 
-        # special treatment for point 149 (CWL) according to wolf specs
         elif dp_type == "DPT_HVACMode":
-            if dp_id == 149:
-                return encode_dict(value, HVACModes_CWL)
-            else:
-                return encode_dict(value, HVACModes)
+            return encode_dict(value, HVACModes)
+
+        elif dp_type == "DPT_HVACMode_CWL":
+            return encode_dict(value, HVACModes_CWL)
 
         elif dp_type == "DPT_HVACContrMode":
             return encode_dict(value, HVACContrModes)
