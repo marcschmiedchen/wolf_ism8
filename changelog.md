@@ -2,7 +2,9 @@
 ------------------
 Added
 ~~~~~~~
-- some CHA ControlModes which were missing from Wolf documentation
+- new datapoints from FW1.90
+- added new HVAC-Modes for/from CHA
+- some refactoring, improved logging
 
 3.2.4 (2024-07-02)
 ------------------

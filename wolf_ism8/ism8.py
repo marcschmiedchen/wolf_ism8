@@ -3,18 +3,7 @@ Module for gathering info and sending commands from/to Wolf HVAC System via ISM8
 """
 
 import logging
-import urllib
-import re
 import asyncio
-import urllib.error
-import urllib.request
-
-# import urllib.error
-# import urllib.request
-
-# import urllib.error
-# import urllib.request
-
 from .ism8_constants import *
 from .ism8_helper_functions import *
 
@@ -85,47 +74,36 @@ class Ism8(asyncio.Protocol):
         """returns list of all ISM8 devices. Unique first Component of DATAPOINTS"""
         return sorted(set([x[0] for x in DATAPOINTS.values()]))
 
+    @staticmethod
+    def first_fw_version(dp_id: int) -> str:
+        "returns first ISM8-firmware version of datapoint implementation"
+        if 191 < dp_id < 208:
+            return "1.50"
+        if dp_id in (209, 210, 211, 251):
+            return "1.70"
+        if 354 < dp_id < 362:
+            return "1.70"
+        if 363 < dp_id < 373:
+            return "1.80"
+        if 211 < dp_id < 251:
+            return "1.80"
+        return "1.00"
+
     def __init__(self):
         # the datapoint-values from the device are stored and buffered here
         self._dp_values = {}
         self._transport = None
-        self._remote_ip_adress = None
-        self._hardware_version = None
-        self._firmware_version = None
-        self._serial_number = None
+        self._remote_ip_address = None
         self._connected = False
         # the callbacks for all datapoints are stored in a dictionary
         self._callback_on_data = {}
         return
 
-    def extract_device_infos(self, ip_address):
-        try:
-            with urllib.request.urlopen(ip_address) as response:
-                html = str(response.read())
-
-            match = re.search(r"FW-Version.*?(\d+\.\d+)", html)
-            if match:
-                self._firmware_version = match.group(1)
-                Ism8.log.debug(f"extracted FW: {self._firmware_version}")
-
-            match = re.search(r"HW-Version.*?(\d+\.\d+)", html)
-            if match:
-                self._hardware_version = match.group(1)
-                Ism8.log.debug(f"extracted FW: {self._hardware_version}")
-
-            match = re.search(r"<td>\s*(\w{12})\s*<\/td>", html)
-            if match:
-                self._serial_number = match.group(1)
-                Ism8.log.debug(f"extracted FW: {self._serial_number}")
-
-        except urllib.error.URLError as e:
-            print("Could not gather info on ISM8.")
-            print("Error code: ", e.reason)
-
-        return
-
     def factory(self):
         return self
+
+    def get_remote_ip_adress(self):
+        return self._remote_ip_address
 
     def request_all_datapoints(self) -> None:
         """send 'request all datapoints' to ISM8"""
@@ -140,9 +118,6 @@ class Ism8(asyncio.Protocol):
         self._connected = True
         self._remote_ip_address = transport.get_extra_info("peername")[0]
         Ism8.log.info("Connection from ISM8: %s", self._remote_ip_address)
-
-        # get & set some info about ISM8, like firmware version, from local web portal
-        self.extract_device_infos("http://" + self._remote_ip_address)
 
     def connection_lost(self, exc):
         """
@@ -237,7 +212,7 @@ class Ism8(asyncio.Protocol):
         if dp_id in DATAPOINTS:
             dp_type = DATAPOINTS[dp_id][IX_TYPE]
         else:
-            Ism8.log.info(f"unknown datapoint: {dp_id}, data:{raw_bytes}")
+            Ism8.log.error(f"unknown datapoint: {dp_id}, data:{raw_bytes}")
             return
 
         result = 0
@@ -284,10 +259,10 @@ class Ism8(asyncio.Protocol):
             self._dp_values[dp_id] = decode_Scaling(result)
 
         elif dp_type == "DPT_HVACMode":
-            if dp_id == 149:
-                self._dp_values[dp_id] = decode_dict(result, HVACModes_CWL)
-            else:
-                self._dp_values[dp_id] = decode_dict(result, HVACModes)
+            self._dp_values[dp_id] = decode_dict(result, HVACModes)
+
+        elif dp_type == "DPT_HVACMode_CWL":
+            self._dp_values[dp_id] = decode_dict(result, HVACModes_CWL)
 
         elif dp_type == "DPT_DHWMode":
             self._dp_values[dp_id] = decode_dict(result, DHWModes)
@@ -305,7 +280,10 @@ class Ism8(asyncio.Protocol):
             Ism8.log.info(f"datatype <{dp_type}> not implemented, fallback to INT.")
             self._dp_values[dp_id] = decode_Int(result)
 
-        Ism8.log.debug("decoded %d to %s", result, self._dp_values[dp_id])
+        if self._dp_values[dp_id] is not None:
+            Ism8.log.debug(f"decoded {result} to {self._dp_values[dp_id]}")
+        else:
+            Ism8.log.error(f"decoding of dp {dp_id} data, type {dp_type} failed")
 
         if dp_id in self._callback_on_data.keys():
             Ism8.log.debug(f"calling callback for dp_id {dp_id}.")

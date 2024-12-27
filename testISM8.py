@@ -6,7 +6,9 @@ import wolf_ism8 as wolf
 
 async def setup_server(tst_ism8: wolf.Ism8):
     _eventloop = asyncio.get_running_loop()
-    task1 = _eventloop.create_task(_eventloop.create_server(tst_ism8, port=12004))
+    task1 = _eventloop.create_task(
+        _eventloop.create_server(tst_ism8.factory, port=12004)
+    )
     print("Setup Server")
     _server = await task1
     _LOGGER.debug(f"Waiting for ISM8 connection on {_server.sockets[0].getsockname()}")
@@ -78,7 +80,7 @@ async def test_date_implementation(tst_ism8: wolf.Ism8):
 
     print("encode/decode roundtrip")
     test_bytes = tst_ism8.encode_datapoint(datetime.date(2024, 5, 30), 154)
-    if tst_ism8:
+    if test_bytes:
         tst_ism8.decode_datapoint(155, test_bytes)
     print(tst_ism8._dp_values[155])
     assert tst_ism8._dp_values[155] == datetime.date(2024, 5, 30)
@@ -112,7 +114,8 @@ async def test_time_of_day_implementation(tst_ism8: wolf.Ism8):
 
     print("encode/decode roundtrip")
     test_bytes = tst_ism8.encode_datapoint(datetime.time(hour=15, minute=38), 156)
-    tst_ism8.decode_datapoint(156, test_bytes)
+    if test_bytes:
+        tst_ism8.decode_datapoint(156, test_bytes)
     print(tst_ism8._dp_values[156])
     assert tst_ism8._dp_values[156] == datetime.time(hour=15, minute=38)
 
@@ -131,36 +134,39 @@ async def test_write_HVACMode57(tst_ism8: wolf.Ism8):
     57 Programmwahl Heizkreis DPT_HVACMode Out / In
     """
     print("trying to change HVAC modes")
-    # tst_ism8.send_dp_value(57, 'Comfort')
-    # tst_ism8.send_dp_value(57, 'Standby')
     # not in range
-    tst_ism8.send_dp_value(57, "Building Protection")
-    tst_ism8.send_dp_value(57, "Auto")
-    await asyncio.sleep(5)
+    tst_ism8.send_dp_value(57, "Comfort")
+
+    tst_ism8.send_dp_value(57, "Automatikbetrieb")
+    tst_ism8.send_dp_value(57, "Heizbetrieb")
+    tst_ism8.send_dp_value(57, "Standby")
+    tst_ism8.send_dp_value(57, "Sparbetrieb")
+    tst_ism8.send_dp_value(57, "Gebäudeschutz")
+    tst_ism8.send_dp_value(57, "Automatikbetrieb heizen")
+    tst_ism8.send_dp_value(57, "Automatikbetrieb kühlen")
 
 
 async def test_write_HVACMode149(tst_ism8: wolf.Ism8):
     """
-    57 Programmwahl Heizkreis DPT_HVACMode Out / In
+    149 Programmwahl Heizkreis DPT_HVACMode_CWL Out / In
     """
-    print("trying to change HVAC modes")
+    print("trying to change HVAC modes for CWL")
+    # not in range
     tst_ism8.send_dp_value(149, "Comfort")
-    # not in range
+
     tst_ism8.send_dp_value(149, "Standby")
-    # not in range
-    tst_ism8.send_dp_value(149, "Building Protection")
-    tst_ism8.send_dp_value(149, "Auto")
-    await asyncio.sleep(5)
+    tst_ism8.send_dp_value(149, "Feuchteschutz")
+    tst_ism8.send_dp_value(149, "Automatikbetrieb")
 
 
 async def test_write_DHWMode(tst_ism8: wolf.Ism8):
     """
     58 Programmwahl Warmwasser DPT_DHWMode Out / In
     """
-    print("trying to change DHWMode to 'Auto'")
-    tst_ism8.send_dp_value(58, "GibtsNicht")
     # not in range
-    tst_ism8.send_dp_value(58, "Auto")
+    tst_ism8.send_dp_value(58, "GibtsNicht")
+    print("trying to change DHWMode to 'Auto'")
+    tst_ism8.send_dp_value(58, "Automatikbetrieb")
     tst_ism8.send_dp_value(58, "Normal")
     await asyncio.sleep(5)
 
@@ -169,49 +175,43 @@ async def test_HVACCONTRMode(tst_ism8: wolf.Ism8):
     """
     177 Betriebsart DPT_HVACContrMode
     """
+    print(tst_ism8.decode_datapoint(177, bytearray(b"\x01")))
+    print(tst_ism8.decode_datapoint(177, bytearray(b"\x06")))
+    print(tst_ism8.decode_datapoint(177, bytearray(b"\x07")))
+    print(tst_ism8.decode_datapoint(177, bytearray(b"\x08")))
+    print(tst_ism8.decode_datapoint(177, bytearray(b"\x09")))
     print(tst_ism8.encode_datapoint("GibtsNicht", 177))
     # not in range
     print("trying to change HVACContrMode to 'Frostschutz'")
-    print(tst_ism8.encode_datapoint("Frostschutz", 177))
-    await asyncio.sleep(5)
+    assert tst_ism8.encode_datapoint("Frostschutz", 177) == b"\x0b"
 
 
 async def main():
     ism8 = wolf.Ism8()
-    # for keys, values in wolf.DATAPOINTS.items():
-    # #    _LOGGER.debug(f"{keys}:  {values}")
-    # _LOGGER.debug(bytearray([round(34 / (100 / 255))]))
-    # _LOGGER.debug(bytearray(round(33 / (100 / 255))))
-    # _LOGGER.debug(bytearray(b"\x01"))
-    # _LOGGER.debug(len(bytearray(b"\x01")))
-    # _LOGGER.debug(bytearray(b"\x00"))
-    # _LOGGER.debug([round(33.0 / (100 / 255))])
-    # _LOGGER.debug(bytearray([84]))
-    # _LOGGER.debug(len(bytearray([84])))
-    # print(ism8.get_all_devices())
 
-    _server = await setup_server(ism8)
+    assert len(wolf.DATAPOINTS.items()) == 282
+    assert len(ism8.get_all_devices()) == 21
+
+    # _server = await setup_server(ism8)
     # await wait_for_connection(ism8)
-    # await test_write_on_off(ism8)
-    # await asyncio.sleep(5)
-    # await test_write_float(ism8)
-    # await test_write_HVACMode149(ism8)
-    # await test_date_implementation(ism8)
-    # await test_time_of_day_implementation(ism8)
-    # await test_HVACCONTRMode(ism8)
-    # print(ism8.get_value_range(57))
-    # print(ism8.get_value_range(157))
-    # print(ism8.get_value_range(158))
-    # await test_write_HVACMode57(ism8)
-    # await test_write_DHWMode(ism8)
-    # print("request all DP")
-    # ism8.request_all_datapoints()
-    # print(ism8.encode_datapoint(19711, 178))
-    # ism8.send_dp_value(153, 1)
-    # await get_device_infos(ism8)
-    ism8.extract_device_infos("http://192.168.2.8")
-    await asyncio.sleep(10)
-    _server.close()
+
+    await test_write_on_off(ism8)
+    await test_write_float(ism8)
+    await test_write_HVACMode149(ism8)
+    await test_date_implementation(ism8)
+    await test_time_of_day_implementation(ism8)
+    await test_HVACCONTRMode(ism8)
+    print(ism8.get_value_range(57))
+    print(ism8.get_value_range(157))
+    print(ism8.get_value_range(158))
+    print(ism8.get_value_range(179))
+    await test_write_HVACMode57(ism8)
+    await test_write_DHWMode(ism8)
+    print("request all DP")
+    ism8.request_all_datapoints()
+    print(ism8.encode_datapoint(19711, 178))
+    ism8.send_dp_value(153, 1)
+    await asyncio.sleep(1)
 
 
 if __name__ == "__main__":

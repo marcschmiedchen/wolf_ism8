@@ -1,24 +1,17 @@
 import logging
 import datetime
-from .ism8_constants import (
-    DATAPOINTS,
-    DATATYPES,
-    DP_VALUES_ALLOWED,
-    DT_PYTHONTYPE,
-    IX_RW_FLAG,
-    IX_TYPE,
-)
+from .ism8_constants import *
 
 log = logging.getLogger(__name__)
 
 
-def decode_dict(mode_number: int, mode_dic: dict) -> str:
+def decode_dict(mode_number: int, mode_dic: dict) -> str | None:
     """returns a human readable string from the API-encoded mode_number"""
     if mode_number in mode_dic.keys():
         return mode_dic[mode_number]
     else:
         log.error(f"mode number {mode_number} not implemented:")
-        return ""
+        return None
 
 
 def encode_dict(mode: str, mode_dic: dict) -> bytearray | None:
@@ -130,7 +123,6 @@ def validate_dp_range(dp_id: int, value) -> bool:
     """
     checks if value is valid for the datapoint before sending to ISM
     """
-
     # check if dp is R/O
     if not DATAPOINTS[dp_id][IX_RW_FLAG]:
         log.error(f"datapoint {dp_id} is not writable")
