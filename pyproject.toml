@@ -17,7 +17,7 @@ classifiers = [
     "Intended Audience :: Developers",   
 ]
 keywords = ["Home Assistant", "Wolf", "HVAC"]
-dependencies = ["asyncio", "aiohttp"]
+dependencies = ["asyncio"]
 requires-python = ">=3.8"
 
 [project.urls]
