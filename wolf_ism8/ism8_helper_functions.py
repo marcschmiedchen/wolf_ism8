@@ -1,6 +1,15 @@
+# pylint: disable-msg=W1203
+"""contains encode/decode helper functions for ISM8 datapoints"""
 import logging
 import datetime
-from .ism8_constants import *
+from .ism8_constants import (
+    DP_VALUES_ALLOWED,
+    DATAPOINTS,
+    DT_PYTHONTYPE,
+    IX_RW_FLAG,
+    IX_TYPE,
+    DATATYPES,
+)
 
 log = logging.getLogger(__name__)
 
@@ -30,31 +39,36 @@ def encode_dict(mode: str, mode_dic: dict) -> bytearray | None:
         return None
 
 
-def decode_Scaling(input: int) -> float:
-    return 100 / 255 * input
+def decode_scaling(value: int) -> float:
+    """decodes a scaled value from 0-255 to 0-100"""
+    return 100 / 255 * value
 
 
-def encode_Scaling(input: float) -> bytearray:
-    return bytearray([round(input / (100 / 255))])
+def encode_scaling(value: float) -> bytearray:
+    """encodes a value from 0-100 to 0-255"""
+    return bytearray([round(value / (100 / 255))])
 
 
-def decode_Bool(input: int) -> bool:
-    # take 1st bit and cast to Bool
-    return bool(input & 0b1)
+def decode_bool(value: int) -> bool:
+    """decodes a boolean value for int data"""
+    return bool(value & 0b1)
 
 
-def encode_Bool(input: int) -> bytearray:
-    return bytearray(b"\x01") if bool(input) is True else bytearray(b"\x00")
+def encode_bool(value: int) -> bytearray:
+    """encodes a boolean value from int data"""
+    return bytearray(b"\x01") if bool(value) is True else bytearray(b"\x00")
 
 
-def decode_Int(input: int) -> int:
-    return int(input)
+def decode_int(value: int) -> int:
+    """decodes an integer value"""
+    return int(value)
 
 
-def decode_Float(input: int) -> float | None:
-    _sign = (input & 0b1000000000000000) >> 15
-    _exponent = (input & 0b0111100000000000) >> 11
-    _mantisse = input & 0b0000011111111111
+def decode_float(value: int) -> float | None:
+    """decodes a float value"""
+    _sign = (value & 0b1000000000000000) >> 15
+    _exponent = (value & 0b0111100000000000) >> 11
+    _mantisse = value & 0b0000011111111111
     if _mantisse == 0b0000011111111111:
         # according to WOLF specs, a mantisse with all bits set
         # indicates invalid data
@@ -65,17 +79,18 @@ def decode_Float(input: int) -> float | None:
     return decoded_float
 
 
-def encode_Float(input: float) -> bytearray:
-    input = round(input, 2)
+def encode_float(value: float) -> bytearray:
+    """encodes a float value to ISM8 format"""
+    value = round(value, 2)
     data = [0, 0]
     encoded_float = bytearray()
     _exponent = 0
-    _mantisse_calc = round(abs(input) * 100)
+    _mantisse_calc = round(abs(value) * 100)
     while _mantisse_calc.bit_length() > 11:
         _exponent += 1
         _mantisse_calc = round(_mantisse_calc / 2)
-    _mantisse = round(input * 100 / (1 << _exponent))
-    if input < 0:
+    _mantisse = round(value * 100 / (1 << _exponent))
+    if value < 0:
         data[0] |= 0x80
         _mantisse = round((~(_mantisse * -1) + 1) & 0x07FF)
     data[0] |= (_exponent & 0x0F) << 3
@@ -87,42 +102,44 @@ def encode_Float(input: float) -> bytearray:
     return encoded_float
 
 
-def decode_date(input: int) -> datetime.date:
-    year = input & 0b000000000000000001111111
-    month = (input & 0b000000000000111100000000) >> 8
-    day = (input & 0b000111110000000000000000) >> 16
+def decode_date(value: int) -> datetime.date:
+    """decodes a date value"""
+    year = value & 0b000000000000000001111111
+    month = (value & 0b000000000000111100000000) >> 8
+    day = (value & 0b000111110000000000000000) >> 16
     return datetime.date(year + 2000, month, day)
 
 
-def encode_date(input: datetime.date) -> bytearray:
+def encode_date(value: datetime.date) -> bytearray:
+    """encodes a date value"""
     encoded_date = bytearray()
-    encoded_date.append(input.day)
-    encoded_date.append(input.month)
-    encoded_date.append(input.year - 2000)
-    log.debug(f"encoded {input} -> {encoded_date.hex(':')}")
+    encoded_date.append(value.day)
+    encoded_date.append(value.month)
+    encoded_date.append(value.year - 2000)
+    log.debug(f"encoded {value} -> {encoded_date.hex(':')}")
     return encoded_date
 
 
-def decode_time_of_day(input: int) -> datetime.time:
-    seconds = input & 0b000000000000000000111111
-    minutes = (input & 0b000000000011111100000000) >> 8
-    hours = (input & 0b000111110000000000000000) >> 16
+def decode_time_of_day(value: int) -> datetime.time:
+    """decodes a time value"""
+    seconds = value & 0b000000000000000000111111
+    minutes = (value & 0b000000000011111100000000) >> 8
+    hours = (value & 0b000111110000000000000000) >> 16
     return datetime.time(hour=hours, minute=minutes, second=seconds)
 
 
-def encode_time_of_day(input: datetime.time) -> bytearray:
+def encode_time_of_day(value: datetime.time) -> bytearray:
+    """encodes a time value"""
     encoded_time = bytearray()
-    encoded_time.append(input.hour)
-    encoded_time.append(input.minute)
-    encoded_time.append(input.second)
-    log.debug(f"encoded {input} -> {encoded_time.hex(':')}")
+    encoded_time.append(value.hour)
+    encoded_time.append(value.minute)
+    encoded_time.append(value.second)
+    log.debug(f"encoded {value} -> {encoded_time.hex(':')}")
     return encoded_time
 
 
 def validate_dp_range(dp_id: int, value) -> bool:
-    """
-    checks if value is valid for the datapoint before sending to ISM
-    """
+    """checks if value is valid for the datapoint before sending to ISM"""
     # check if dp is R/O
     if not DATAPOINTS[dp_id][IX_RW_FLAG]:
         log.error(f"datapoint {dp_id} is not writable")

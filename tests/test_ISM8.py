@@ -166,8 +166,8 @@ async def test_scaling_implementation(tst_ism8: wolf.Ism8):
     """
     test scaling implementation
     """
-    assert wolf.encode_Scaling(100) == b"\xff"
-    assert wolf.encode_Scaling(0) == b"\x00"
+    assert wolf.encode_scaling(100) == b"\xff"
+    assert wolf.encode_scaling(0) == b"\x00"
 
 
 @pytest.mark.asyncio

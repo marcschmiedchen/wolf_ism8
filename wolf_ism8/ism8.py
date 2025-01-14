@@ -1,11 +1,45 @@
+# pylint: disable-msg=W1203
 """
 Module for gathering info and sending commands from/to Wolf HVAC System via ISM8 adapter
 """
-
 import logging
 import asyncio
-from .ism8_constants import *
-from .ism8_helper_functions import *
+from .ism8_constants import (
+    DATAPOINTS,
+    DATATYPES,
+    IX_DEVICENAME,
+    IX_NAME,
+    IX_TYPE,
+    IX_RW_FLAG,
+    LIB_VERSION,
+    DT_UNIT,
+    DP_VALUES_ALLOWED,
+    ISM_HEADER,
+    ISM_ACK_DP_MSG,
+    ISM_CONN_HEADER,
+    ISM_SERVICE_TRANSMIT,
+    ISM_REQ_DP_MSG,
+    HVACModes,
+    HVACModes_CWL,
+    HVACContrModes,
+    DHWModes,
+)
+from .ism8_helper_functions import (
+    decode_scaling,
+    decode_bool,
+    decode_float,
+    decode_int,
+    decode_dict,
+    decode_date,
+    decode_time_of_day,
+    encode_bool,
+    encode_float,
+    encode_scaling,
+    encode_dict,
+    encode_date,
+    encode_time_of_day,
+    validate_dp_range,
+)
 
 
 class Ism8(asyncio.Protocol):
@@ -100,9 +134,11 @@ class Ism8(asyncio.Protocol):
         return
 
     def factory(self):
+        """factory method for asyncio"""
         return self
 
     def get_remote_ip_adress(self):
+        """returns the IP address of the ISM8 module after connection"""
         return self._remote_ip_address
 
     def request_all_datapoints(self) -> None:
@@ -129,12 +165,15 @@ class Ism8(asyncio.Protocol):
             self._transport.close()
 
     def register_callback(self, cb, dp_nbr):
+        """registers a callback for a datapoint; is called when data is received"""
         self._callback_on_data.update({dp_nbr: cb})
 
     def remove_callback(self, dp_nbr):
+        """removes a callback for a datapoint"""
         self._callback_on_data.pop(dp_nbr)
 
     def connected(self):
+        """returns connection status"""
         return self._connected
 
     def data_received(self, data) -> None:
@@ -150,18 +189,18 @@ class Ism8(asyncio.Protocol):
         # loop from header to header (if there are more than 1)
         # loop ends when no header is found in the remaining data
         while ptr >= 0:
-            Ism8.log.debug(f"found header at {ptr}")
+            # Ism8.log.debug(f"found header at {ptr}")
             # smallest processable data: KNX header (6 bytes) and conn. header (4bytes)
             if len(data[ptr:]) >= 10:
                 # frame size is encoded at offset +4 (2bytes)
                 frame_size = 256 * data[ptr + 4] + data[ptr + 5]
-                Ism8.log.debug(f"msg length = {frame_size}")
+                # Ism8.log.debug(f"msg length = {frame_size}")
             else:
-                Ism8.log.error("Broken header structure. Skipping data.")
+                # Ism8.log.error("Broken header structure. Skipping data.")
                 return False
 
             if len(data[ptr:]) < frame_size:
-                Ism8.log.debug(f"data length = {len(data)}")
+                # Ism8.log.debug(f"data length = {len(data)}")
                 Ism8.log.error("Object server message too short. Skipping data.")
                 return False
 
@@ -201,15 +240,15 @@ class Ism8(asyncio.Protocol):
         data_ptr = 0
         counter = 1
         while counter <= number_of_datapoints:
-            Ism8.log.debug(f"processing datapoint {counter} / {number_of_datapoints}")
+            # Ism8.log.debug(f"processing datapoint {counter} / {number_of_datapoints}")
             dp_id = msg[data_ptr + 6] * 256 + msg[data_ptr + 7]
             dp_length = msg[data_ptr + 9]
             if dp_length > 0:
                 dp_value = msg[data_ptr + 10 : data_ptr + 10 + dp_length]
-                Ism8.log.debug(f"DP {dp_id}, raw value: {dp_value.hex(':')}")
+                # Ism8.log.debug(f"DP {dp_id}, raw value: {dp_value.hex(':')}")
                 self.decode_datapoint(dp_id, dp_value)
             else:
-                Ism8.log.info(f"DP {dp_id} discarded due to zero data")
+                Ism8.log.info("data discarded due to zero data")
                 return False
             # now advance counters, go on to next datapoint in message (if any)
             counter += 1
@@ -237,7 +276,7 @@ class Ism8(asyncio.Protocol):
             "DPT_Enable",
             "DPT_OpenClose",
         ):
-            self._dp_values[dp_id] = decode_Bool(result)
+            self._dp_values[dp_id] = decode_bool(result)
 
         elif dp_type in (
             "DPT_Value_Temp",
@@ -247,7 +286,7 @@ class Ism8(asyncio.Protocol):
             "DPT_Power",
             "DPT_Value_Volume_Flow",
         ):
-            temp_value = decode_Float(result)
+            temp_value = decode_float(result)
             if temp_value is None or (temp_value > 1000 and dp_type == "DPT_Power"):
                 # ignore invalid data, not clear where it comes from...
                 Ism8.log.debug("discarding %s, out of range", temp_value)
@@ -256,10 +295,10 @@ class Ism8(asyncio.Protocol):
                 self._dp_values[dp_id] = temp_value
 
         elif dp_type in ("DPT_ActiveEnergy", "DPT_ActiveEnergy_kWh"):
-            self._dp_values[dp_id] = decode_Int(result)
+            self._dp_values[dp_id] = decode_int(result)
 
         elif dp_type == "DPT_FlowRate_m3/h":
-            temp_value = 0.0001 * decode_Int(result)
+            temp_value = 0.0001 * decode_int(result)
             # ignore wrong data , not clear where it comes from...
             if temp_value > 1000:
                 Ism8.log.debug("discarding %s, out of range", temp_value)
@@ -268,7 +307,7 @@ class Ism8(asyncio.Protocol):
                 self._dp_values[dp_id] = temp_value
 
         elif dp_type == "DPT_Scaling":
-            self._dp_values[dp_id] = decode_Scaling(result)
+            self._dp_values[dp_id] = decode_scaling(result)
 
         elif dp_type == "DPT_HVACMode":
             self._dp_values[dp_id] = decode_dict(result, HVACModes)
@@ -289,51 +328,49 @@ class Ism8(asyncio.Protocol):
             self._dp_values[dp_id] = decode_time_of_day(result)
 
         else:
-            Ism8.log.info(f"datatype <{dp_type}> not implemented, fallback to INT.")
-            self._dp_values[dp_id] = decode_Int(result)
+            Ism8.log.error("datatype not implemented, fallback to INT.")
+            self._dp_values[dp_id] = decode_int(result)
 
-        if self._dp_values[dp_id] is not None:
-            Ism8.log.debug(f"decoded {result} to {self._dp_values[dp_id]}")
-        else:
-            Ism8.log.error(f"error dp {dp_id}, msg: {raw_bytes}, type {dp_type}")
+        if self._dp_values[dp_id] is None:
+            Ism8.log.error("error decoding DP")
 
         if dp_id in self._callback_on_data.keys():
-            Ism8.log.debug(f"calling callback for dp_id {dp_id}.")
             self._callback_on_data[dp_id]()
         else:
-            Ism8.log.debug(f"no callback for dp_id {dp_id}.")
+            Ism8.log.debug("no callback for dp.")
         return
 
-    def send_dp_value(self, dp_id: int, value) -> None:
+    def send_dp_value(self, dp_id: int, value) -> bool:
         """
         sends values for a (writable) datapoint in ISM8. Before message is sent,
-        several checks are performed
+        several checks are performed. Return true if successful, false otherwise.
         """
         # return if value is out of range
         if not validate_dp_range(dp_id, value):
             Ism8.log.error("data validation failed. data may be out of range.")
             return False
-
         if not self._connected or self._transport is None:
             Ism8.log.error("No Connection to ISM8 Module")
             return False
         # now encode the value according to ISM8 spec, depending on data-type
         # if encoding fails, None is returned an no data is sent
         encoded_value = self.encode_datapoint(value, dp_id)
+        if encoded_value is None:
+            Ism8.log.error(f"Encoding failed for datapoint {dp_id} with value {value}")
+            return False
 
-        if encoded_value is not None:
-            # prepare frame with obj info
-            update_msg = self.build_message(dp_id, encoded_value)
-            Ism8.log.debug(f"sending datapoint number {dp_id} as {encoded_value}")
-            Ism8.log.debug(f"update msg = {update_msg}")
-            # now send message to ISM8
-            self._transport.write(update_msg)  # type: ignore
-            # after sending update internal cache
-            Ism8.log.debug(f"updating cache for {dp_id} with {value}")
-            self._dp_values[dp_id] = value
+        # prepare dataframe
+        update_msg = self.build_message(dp_id, encoded_value)
+        Ism8.log.debug(f"sending datapoint number {dp_id} as {encoded_value}")
+        # Ism8.log.debug(f"update msg = {update_msg}")
+        # send message to ISM8
+        self._transport.write(update_msg)
+        # after sending update internal cache
+        self._dp_values[dp_id] = value
         return True
 
-    def build_message(self, dp_id: int, encoded_value: bytearray):
+    def build_message(self, dp_id: int, encoded_value: bytearray) -> bytearray:
+        """builds a message for ISM8 for one datapoint, according to ISM8 specs"""
         update_msg = bytearray()
         update_msg.extend(ISM_HEADER)
         update_msg.extend((0).to_bytes(2, byteorder="big"))
@@ -351,8 +388,9 @@ class Ism8(asyncio.Protocol):
         update_msg[5] = frame_size[1]
         return update_msg
 
-    def encode_datapoint(self, value, dp_id):
-        # check if DP exists
+    def encode_datapoint(self, value, dp_id) -> bytearray | None:
+        """encodes a Value to ISM8 bytecode according to specs"""
+        # safety check if DP exists, get type
         if dp_id in DATAPOINTS:
             dp_type = DATAPOINTS[dp_id][IX_TYPE]
         else:
@@ -365,7 +403,7 @@ class Ism8(asyncio.Protocol):
             "DPT_Enable",
             "DPT_OpenClose",
         ):
-            return encode_Bool(value)
+            return encode_bool(value)
 
         elif dp_type in (
             "DPT_Value_Temp",
@@ -375,10 +413,10 @@ class Ism8(asyncio.Protocol):
             "DPT_Power",
             "DPT_Value_Volume_Flow",
         ):
-            return encode_Float(value)
+            return encode_float(value)
 
         elif dp_type == "DPT_Scaling":
-            return encode_Scaling(value)
+            return encode_scaling(value)
 
         elif dp_type == "DPT_HVACMode":
             return encode_dict(value, HVACModes)
@@ -397,9 +435,8 @@ class Ism8(asyncio.Protocol):
 
         elif dp_type == "DPT_TimeOfDay":
             return encode_time_of_day(value)
-
         else:
-            Ism8.log.info(f"writing datatype not implemented: {dp_type}")
+            Ism8.log.error(f"writing datatype not implemented: {dp_type}")
             return None
 
     def read_sensor(self, dp_id: int):

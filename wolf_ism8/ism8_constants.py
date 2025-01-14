@@ -1,3 +1,5 @@
+"""constnants for Wolf ISM8 API"""
+
 import datetime
 
 LIB_VERSION = "3.3.1"
@@ -375,7 +377,6 @@ DP_VALUES_ALLOWED = {
     71: (DHWModes[0], DHWModes[2], DHWModes[4]),
     72: (0, 1),
     73: (0, 1),
-    74: (0, 1),
     74: (0, 1),
     75: (0, 1),
     76: (0, 1),
