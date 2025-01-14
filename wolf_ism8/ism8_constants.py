@@ -254,6 +254,8 @@ DATAPOINTS = {
     352: ("undok_Daten", "undokumentiert_352", "DPT_unknown", False),
     353: ("undok_Daten", "undokumentiert_353", "DPT_unknown", False),
     354: ("undok_Daten", "undokumentiert_354", "DPT_unknown", False),
+    362: ("undok_Daten", "undokumentiert_362", "DPT_unknown", False),
+    363: ("undok_Daten", "undokumentiert_363", "DPT_unknown", False),
     355: ("Bedienmodul_BM2", "Erkennung_Geraete_1", "DPT_Value_2_Ucount", False),
     356: ("Bedienmodul_BM2", "Erkennung_Geraete_2", "DPT_Value_2_Ucount", False),
     357: ("Bedienmodul_BM2", "Unterscheidung_Typ_HG1", "DPT_Value_1_Ucount", False),
@@ -309,6 +311,7 @@ DATAPOINTS = {
     248: ("Waermepumpe4", "Status E-Heizung", "DPT_Switch", False),
     249: ("Waermepumpe4", "Anlagendruck", "DPT_Value_Pres", False),
     250: ("Waermepumpe4", "Leistungsaufnahme", "DPT_Power", False),
+    767: ("undok_Daten", "undokumentiert_767", "DPT_unknown", False),
 }
 
 HVACModes = {

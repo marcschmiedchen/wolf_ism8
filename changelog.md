@@ -1,3 +1,19 @@
+3.3.2 (2025-01-14)
+------------------
+Added
+~~~~~~~
+- Ignores data if data length is zero 
+- Lib does not send ACK if data length is zero 
+- moved unit-tests to pytest framework
+- added "known" undocumented datapoints 362,363,767
+
+Fixed
+~~~~~~~
+- refactored naming conventions / variable names
+- improved network message handling and logging
+- added missing docstrings
+- fixed double entry in dictionary
+
 3.3.1 (2024-12-27)
 ------------------
 Added

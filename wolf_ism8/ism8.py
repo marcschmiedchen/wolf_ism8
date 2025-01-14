@@ -201,7 +201,7 @@ class Ism8(asyncio.Protocol):
 
             if len(data[ptr:]) < frame_size:
                 # Ism8.log.debug(f"data length = {len(data)}")
-                Ism8.log.error("Object server message too short. Skipping data.")
+                # Ism8.log.error("Object server message too short. Skipping data.")
                 return False
 
             # process next ObjectServer message (see docs), starts at ISM-header+10
@@ -221,10 +221,10 @@ class Ism8(asyncio.Protocol):
             # prepare to get decode message; advance Ptr to next Msg if bytes are left
             ptr = ptr + frame_size
             if len(data[ptr:]) > 0:
-                Ism8.log.info("more data in buffer. Try to extract next datagram.")
+                Ism8.log.debug("more data in buffer. Try to extract next datagram.")
                 ptr = data.find(ISM_HEADER)
             else:
-                Ism8.log.info("End of network buffer.")
+                Ism8.log.debug("End of network buffer.")
                 break
         return True
 
@@ -248,7 +248,7 @@ class Ism8(asyncio.Protocol):
                 # Ism8.log.debug(f"DP {dp_id}, raw value: {dp_value.hex(':')}")
                 self.decode_datapoint(dp_id, dp_value)
             else:
-                Ism8.log.info("data discarded due to zero data")
+                Ism8.log.debug("data discarded due to zero data length")
                 return False
             # now advance counters, go on to next datapoint in message (if any)
             counter += 1
