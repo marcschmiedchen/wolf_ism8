@@ -11,7 +11,6 @@ from .ism8_constants import (
     IX_NAME,
     IX_TYPE,
     IX_RW_FLAG,
-    LIB_VERSION,
     DT_UNIT,
     DP_VALUES_ALLOWED,
     ISM_HEADER,
@@ -67,11 +66,6 @@ class Ism8(asyncio.Protocol):
         return DATAPOINTS.get(dp_id, ["", "", "", "", ""])[IX_TYPE]
 
     @staticmethod
-    def get_version() -> str:
-        """returns library version"""
-        return LIB_VERSION
-
-    @staticmethod
     def get_unit(dp_id: int) -> str:
         """returns datapoint unit from static Dictionary"""
         if dp_id in DATAPOINTS:
@@ -83,7 +77,7 @@ class Ism8(asyncio.Protocol):
     @staticmethod
     def is_writable(dp_id) -> bool:
         """returns writable flag from static Dictionary"""
-        if dp_id in DATAPOINTS.keys():
+        if dp_id in DATAPOINTS.keys():  # pylint: disable=C0201
             return DATAPOINTS[dp_id][IX_RW_FLAG]
         else:
             return False
@@ -92,11 +86,6 @@ class Ism8(asyncio.Protocol):
     def get_value_range(dp_id: int):
         """returns allowed values for write operations"""
         return DP_VALUES_ALLOWED.get(dp_id, tuple())
-
-    @staticmethod
-    def get_library_version() -> str:
-        """returns current implementation version"""
-        return LIB_VERSION
 
     @staticmethod
     def get_all_sensors() -> dict:
@@ -180,6 +169,7 @@ class Ism8(asyncio.Protocol):
         """is called whenever data is ready. Conducts buffering, slices the messages
         and extracts the payload for further processing. Returns false if ISM8 data
         could not be processed"""
+        Ism8.log.debug(f"data received from ISM: {data.hex(':')}")
         frame_size = 0
         # find first header location
         ptr = data.find(ISM_HEADER)
@@ -207,7 +197,7 @@ class Ism8(asyncio.Protocol):
             # process next ObjectServer message (see docs), starts at ISM-header+10
             msg = data[ptr + 10 : ptr + frame_size]
             if self.process_object_server_msg(msg):
-                Ism8.log.debug("Message successfully processed, sending ACK")
+                # Ism8.log.debug("Message successfully processed, sending ACK")
                 # send ACK to ISM8 according to API: ISM Header,
                 # then msg-length(17), then ACK w/ 2 bytes from original msg
                 ack_msg = bytearray(ISM_ACK_DP_MSG)
@@ -219,12 +209,11 @@ class Ism8(asyncio.Protocol):
                 Ism8.log.info("Message faulty, maybe resend by ISM8. No ACK.")
 
             # prepare to get decode message; advance Ptr to next Msg if bytes are left
-            ptr = ptr + frame_size
-            if len(data[ptr:]) > 0:
-                Ism8.log.debug("more data in buffer. Try to extract next datagram.")
-                ptr = data.find(ISM_HEADER)
+            if len(data[ptr + frame_size :]) > 0:
+                Ism8.log.debug(f"more data: {len(data[ptr + frame_size :])} byte.")
+                ptr = data.find(ISM_HEADER, ptr + frame_size)
             else:
-                Ism8.log.debug("End of network buffer.")
+                # Ism8.log.debug("End of network buffer.")
                 break
         return True
 
@@ -233,7 +222,6 @@ class Ism8(asyncio.Protocol):
         Processes received datagram(s) according to ISM8 API specification.
         Split into dp_id, message length and encoded values for further processing
         """
-        Ism8.log.debug(f"ObjectServer message received: {msg.hex(':')}")
         # number of datapoints in message are coded into bytes 4 and 5
         number_of_datapoints = msg[4] * 256 + msg[5]
         # data_ptr keeps track of the bytes
@@ -242,10 +230,12 @@ class Ism8(asyncio.Protocol):
         while counter <= number_of_datapoints:
             # Ism8.log.debug(f"processing datapoint {counter} / {number_of_datapoints}")
             dp_id = msg[data_ptr + 6] * 256 + msg[data_ptr + 7]
+            dp_command = msg[data_ptr + 8]
             dp_length = msg[data_ptr + 9]
-            if dp_length > 0:
+            # only set value if data length is greater than 0 and command byte is "read"
+            if dp_length > 0 and dp_command == 0x03:
                 dp_value = msg[data_ptr + 10 : data_ptr + 10 + dp_length]
-                # Ism8.log.debug(f"DP {dp_id}, raw value: {dp_value.hex(':')}")
+                Ism8.log.debug(f"DP {dp_id}, raw value: {dp_value.hex(':')}")
                 self.decode_datapoint(dp_id, dp_value)
             else:
                 Ism8.log.debug("data discarded due to zero data length")
@@ -334,7 +324,7 @@ class Ism8(asyncio.Protocol):
         if self._dp_values[dp_id] is None:
             Ism8.log.error("error decoding DP")
 
-        if dp_id in self._callback_on_data.keys():
+        if dp_id in self._callback_on_data.keys():  # pylint: disable=C0201
             self._callback_on_data[dp_id]()
         else:
             Ism8.log.debug("no callback for dp.")

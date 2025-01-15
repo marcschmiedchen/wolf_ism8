@@ -19,6 +19,15 @@ async def test_async_setup_server(tst_ism8: wolf.Ism8, _LOGGER):
 
 
 @pytest.mark.asyncio
+async def test_version(_LOGGER):
+    """
+    checks version reporting
+    """
+    _LOGGER.debug(f"Lib version {wolf.__version__}")
+    assert wolf.__version__ is not None
+
+
+@pytest.mark.asyncio
 async def test_write_boolean_DP(tst_ism8: wolf.Ism8, _LOGGER):
     """
     72:  ('MK1', 'Mischer Zeitprogramm 1', 'DPT_Switch', True)
@@ -63,11 +72,20 @@ async def test_network_decoding(tst_ism8: wolf.Ism8, _LOGGER, caplog):
     assert 178 in tst_ism8._dp_values.keys()
     assert tst_ism8._dp_values[178] == pytest.approx(6.1)
 
-    _LOGGER.debug("trying to decode compund network msg")
+    _LOGGER.debug("trying to decode compound network msg1")
     test_bytes = bytearray(
         b"\x06\x20\xf0\x80\x00\x1c\x04\x00\x00\x00\xf0\x06\x00\xb2\x00\x02\x00\xb2\x03\x02\x02\x62\x00\xb3\x03\x02\x02\x63"
     )
-    tst_ism8.data_received(test_bytes)
+    assert tst_ism8.data_received(test_bytes) is True
+    assert 178 in tst_ism8._dp_values.keys()
+    assert tst_ism8._dp_values[178] == pytest.approx(6.1)
+    assert 179 in tst_ism8._dp_values.keys()
+    assert tst_ism8._dp_values[178] == pytest.approx(6.1)
+
+    _LOGGER.debug("trying to decode real compound network msg with 5x same message")
+    test_bytes = bytearray(
+        b"\x06\x20\xf0\x80\x00\x15\x04\x00\x00\x00\xf0\x06\x00\x75\x00\x01\x00\x75\x03\x01\x00\x06\x20\xf0\x80\x00\x15\x04\x00\x00\x00\xf0\x06\x00\x75\x00\x01\x00\x75\x03\x01\x00\x06\x20\xf0\x80\x00\x15\x04\x00\x00\x00\xf0\x06\x00\x75\x00\x01\x00\x75\x03\x01\x00\x06\x20\xf0\x80\x00\x15\x04\x00\x00\x00\xf0\x06\x00\x75\x00\x01\x00\x75\x03\x01\x00\x06\x20\xf0\x80\x00\x15\x04\x00\x00\x00\xf0\x06\x00\x75\x00\x01\x00\x75\x03\x01\x00"
+    )
     assert tst_ism8.data_received(test_bytes) is True
     assert 178 in tst_ism8._dp_values.keys()
     assert tst_ism8._dp_values[178] == pytest.approx(6.1)

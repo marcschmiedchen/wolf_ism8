@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="wolf_ism8"
-version="3.3.1"
+dynamic = ["version"]
 description="Write and read data from wolf heating system via ISM8"
 readme = "README.md"
 authors = [{ name = "marcschmiedchen", email = "marc.schmiedchen@protonmail.com" }]
@@ -23,3 +23,11 @@ requires-python = ">=3.8"
 [project.urls]
 Repository = "https://github.com/marcschmiedchen/wolf_ism8"
 Issues = "https://github.com/marcschmiedchen/wolf_ism8/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "wolf_ism8.__version__"}
+
+[tool.pytest.ini_options]
+pythonpath = "."
+log_cli = 'True'
+log_cli_level="DEBUG"
