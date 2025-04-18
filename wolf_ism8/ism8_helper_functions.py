@@ -28,7 +28,6 @@ def encode_dict(mode: str, mode_dic: dict) -> bytearray | None:
     entry_list = [item[0] for item in mode_dic.items() if item[1] == mode]
     if not entry_list:
         log.error(f"error encoding {mode}")
-        log.error(f"available modes: {mode_dic.items()}")
         return None
     if len(entry_list) == 1:
         # the bytearray-constructor NEEDS a list with one entry!

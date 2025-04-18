@@ -1,8 +1,15 @@
+3.4 (2025-02-14)
+------------------
+Added
+~~~~~~~
+- log level is inherited from calling module (Home Assistant)
+- reduced several log level for errors to infos
+
 3.3.2 (2025-01-14)
 ------------------
 Added
 ~~~~~~~
-- Ignores data if data length is zero 
+- Ignore datapoint if data length is zero 
 - Lib does not send ACK if data length is zero 
 - moved unit-tests to pytest framework
 - added "known" undocumented datapoints 362,363,767
@@ -13,6 +20,9 @@ Fixed
 - improved network message handling and logging
 - added missing docstrings
 - fixed double entry in dictionary
+- changed versioning to dynamic pyproject.toml
+- trimmed down logging
+- moved tests to test directory
 
 3.3.1 (2024-12-27)
 ------------------
