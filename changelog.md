@@ -1,3 +1,12 @@
+3.5 (2026-03-20)
+------------------
+Added
+- change to case-instructions instead of if-else
+- made encoding/decoding more concise with mapping of functions to datapoints
+- added a callback on connection -> helpful in home assistant
+- suppressed jumps to zero in temperature sensors (happens sometimes)
+- implemented volume flow workaround for FW1.9
+
 3.4 (2025-02-14)
 ------------------
 Added

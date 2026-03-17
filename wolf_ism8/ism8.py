@@ -2,40 +2,41 @@
 """
 Module for gathering info and sending commands from/to Wolf HVAC System via ISM8 adapter
 """
-import logging
 import asyncio
+import logging
+
 from .ism8_constants import (
     DATAPOINTS,
     DATATYPES,
-    IX_DEVICENAME,
-    IX_NAME,
-    IX_TYPE,
-    IX_RW_FLAG,
-    DT_UNIT,
     DP_VALUES_ALLOWED,
-    ISM_HEADER,
+    DT_UNIT,
     ISM_ACK_DP_MSG,
     ISM_CONN_HEADER,
-    ISM_SERVICE_TRANSMIT,
+    ISM_HEADER,
     ISM_REQ_DP_MSG,
+    ISM_SERVICE_TRANSMIT,
+    IX_DEVICENAME,
+    IX_NAME,
+    IX_RW_FLAG,
+    IX_TYPE,
+    DHWModes,
+    HVACContrModes,
     HVACModes,
     HVACModes_CWL,
-    HVACContrModes,
-    DHWModes,
 )
 from .ism8_helper_functions import (
-    decode_scaling,
     decode_bool,
+    decode_date,
+    decode_dict,
     decode_float,
     decode_int,
-    decode_dict,
-    decode_date,
+    decode_scaling,
     decode_time_of_day,
     encode_bool,
+    encode_date,
+    encode_dict,
     encode_float,
     encode_scaling,
-    encode_dict,
-    encode_date,
     encode_time_of_day,
     validate_dp_range,
 )
@@ -72,16 +73,14 @@ class Ism8(asyncio.Protocol):
         return ""
 
     @staticmethod
-    def is_writable(dp_id) -> bool:
+    def is_writable(dp_id: int) -> bool:
         """returns writable flag from static Dictionary"""
-        if dp_id in DATAPOINTS.keys():  # pylint: disable=C0201
-            return DATAPOINTS[dp_id][IX_RW_FLAG]
-        return False
+        return DATAPOINTS[dp_id][IX_RW_FLAG] if dp_id in DATAPOINTS else False
 
     @staticmethod
     def get_value_range(dp_id: int):
         """returns allowed values for write operations"""
-        return DP_VALUES_ALLOWED.get(dp_id, tuple())
+        return DP_VALUES_ALLOWED.get(dp_id, ())
 
     @staticmethod
     def get_all_sensors() -> dict:
@@ -91,22 +90,67 @@ class Ism8(asyncio.Protocol):
     @staticmethod
     def get_all_devices():
         """returns list of all ISM8 devices. Unique first Component of DATAPOINTS"""
-        return sorted(set([x[0] for x in DATAPOINTS.values()]))
+        return sorted({x[IX_DEVICENAME] for x in DATAPOINTS.values()})
 
     @staticmethod
     def first_fw_version(dp_id: int) -> str:
-        "returns first ISM8-firmware version of datapoint implementation"
-        if 191 < dp_id < 208:
-            return "1.50"
-        if dp_id in (209, 210, 211, 251):
-            return "1.70"
-        if 354 < dp_id < 362:
-            return "1.70"
-        if 363 < dp_id < 373:
-            return "1.80"
-        if 211 < dp_id < 251:
-            return "1.90"
-        return "1.00"
+        """returns first ISM8-firmware version of datapoint implementation"""
+        match dp_id:
+            case _ if 191 < dp_id < 208:
+                return "1.50"
+            case 209 | 210 | 211 | 251:
+                return "1.70"
+            case _ if 354 < dp_id < 362:
+                return "1.70"
+            case _ if 363 < dp_id < 373:
+                return "1.80"
+            case _ if 211 < dp_id < 251:
+                return "1.90"
+            case _:
+                return "1.00"
+
+    _ENCODERS = {
+        "DPT_Switch": encode_bool,
+        "DPT_Bool": encode_bool,
+        "DPT_Enable": encode_bool,
+        "DPT_OpenClose": encode_bool,
+        "DPT_Scaling": encode_scaling,
+        "DPT_Value_Temp": encode_float,
+        "DPT_Value_Tempd": encode_float,
+        "DPT_Tempd": encode_float,
+        "DPT_Value_Pres": encode_float,
+        "DPT_Power": encode_float,
+        "DPT_Value_Volume_Flow": encode_float,
+        "DPT_HVACMode": lambda v: encode_dict(v, HVACModes),
+        "DPT_HVACMode_CWL": lambda v: encode_dict(v, HVACModes_CWL),
+        "DPT_HVACContrMode": lambda v: encode_dict(v, HVACContrModes),
+        "DPT_DHWMode": lambda v: encode_dict(v, DHWModes),
+        "DPT_Date": encode_date,
+        "DPT_TimeOfDay": encode_time_of_day,
+    }
+
+    _DECODERS = {
+        "DPT_Switch": decode_bool,
+        "DPT_Bool": decode_bool,
+        "DPT_Enable": decode_bool,
+        "DPT_OpenClose": decode_bool,
+        "DPT_Scaling": decode_scaling,
+        "DPT_Value_Temp": decode_float,
+        "DPT_Value_Tempd": decode_float,
+        "DPT_Tempd": decode_float,
+        "DPT_Value_Pres": decode_float,
+        "DPT_Power": decode_float,
+        "DPT_Value_Volume_Flow": decode_float,
+        "DPT_ActiveEnergy": decode_int,
+        "DPT_ActiveEnergy_kWh": decode_int,
+        "DPT_FlowRate_m3/h": decode_int,
+        "DPT_HVACMode": lambda v: decode_dict(v, HVACModes),
+        "DPT_HVACMode_CWL": lambda v: decode_dict(v, HVACModes_CWL),
+        "DPT_HVACContrMode": lambda v: decode_dict(v, HVACContrModes),
+        "DPT_DHWMode": lambda v: decode_dict(v, DHWModes),
+        "DPT_Date": decode_date,
+        "DPT_TimeOfDay": decode_time_of_day,
+    }
 
     def __init__(self):
         # the datapoint-values from the device are stored and buffered here
@@ -117,6 +161,8 @@ class Ism8(asyncio.Protocol):
         self.log = logging.getLogger(__name__)
         # the callbacks for all datapoints are stored in a dictionary
         self._callback_on_data = {}
+        # its possible to register a callback once the connection is established
+        self._callback_on_connection = None
 
     def factory(self):
         """factory method for asyncio"""
@@ -141,6 +187,8 @@ class Ism8(asyncio.Protocol):
         self._connected = True
         self._remote_ip_address = transport.get_extra_info("peername")[0]
         self.log.info("Connection from ISM8: %s", self._remote_ip_address)
+        if self._callback_on_connection is not None:
+            self._callback_on_connection(self._remote_ip_address)
 
     def connection_lost(self, exc):
         """
@@ -158,6 +206,12 @@ class Ism8(asyncio.Protocol):
     def remove_callback(self, dp_nbr):
         """removes a callback for a datapoint"""
         self._callback_on_data.pop(dp_nbr)
+
+    def register_connection_callback(self, cb):
+        """registers a callback for the connection; is called when connection is made"""
+        self._callback_on_connection = cb
+        if self._connected:
+            self._callback_on_connection(self._remote_ip_address)
 
     def connected(self):
         """returns connection status"""
@@ -255,75 +309,46 @@ class Ism8(asyncio.Protocol):
             self.log.debug(f"unknown datapoint: {dp_id}, data:{raw_bytes.hex(':')}")
             return
 
-        result = 0
-        for single_byte in raw_bytes:
-            result = result * 256 + int(single_byte)
+        result = int.from_bytes(raw_bytes, byteorder="big")
 
-        if dp_type in (
-            "DPT_Switch",
-            "DPT_Bool",
-            "DPT_Enable",
-            "DPT_OpenClose",
-        ):
-            self._dp_values[dp_id] = decode_bool(result)
+        if dp_type not in self._DECODERS:
+            self.log.info(f"datatype {dp_type} not implemented, fallback to INT.")
 
-        elif dp_type in (
-            "DPT_Value_Temp",
-            "DPT_Value_Tempd",
-            "DPT_Tempd",
-            "DPT_Value_Pres",
-            "DPT_Power",
-            "DPT_Value_Volume_Flow",
-        ):
-            temp_value = decode_float(result)
-            if temp_value is None or (temp_value > 1000 and dp_type == "DPT_Power"):
-                # ignore invalid data, not clear where it comes from...
-                self.log.debug("discarding %s, out of range", temp_value)
+        decoder = self._DECODERS.get(dp_type, decode_int)
+        value = decoder(result)
+
+        if value is None:
+            self.log.info(f"error decoding DP {dp_id}")
+            return
+
+        # post-processing for complex problems
+        # sometimes there are unreasonably high power values -> drop them.
+        if dp_type == "DPT_Power" and value > 1000:
+            self.log.debug("discarding %s, out of range", value)
+            return
+
+        # sometimes there are jumps to zero in temperature -> drop them.
+        if dp_type in ("DPT_Tempd", "DPT_Value_Temp", "DPT_Value_Tempd"):
+            if dp_id in self._dp_values:
+                if abs(value)<0.01 and abs(self._dp_values[dp_id]) > 10:
+                    self.log.debug("discarding unexpected jump to zero")
+                    return
+
+        # sometimes there are unreasonably high Flow Rates -> drop them.
+        if dp_type == "DPT_FlowRate_m3/h":
+            if value > 10000000:
+                self.log.debug("discarding %s, out of range", value)
                 return
-            else:
-                self._dp_values[dp_id] = temp_value
+        # sometimes there are unreasonably LOW Flow Rates. Was reported as an issue
+        # starting with FW 1.9. Seems the scaling factor is "1" in this case
+        # so values between 0.1ccm/h and 1000ccm/h are assumed to be unscaled.
+        # Bigger values get scaled down the official way(times 0.0001)
+            if  value > 1000:
+                value=value * 0.0001
 
-        elif dp_type in ("DPT_ActiveEnergy", "DPT_ActiveEnergy_kWh"):
-            self._dp_values[dp_id] = decode_int(result)
+        self._dp_values[dp_id] = value
 
-        elif dp_type == "DPT_FlowRate_m3/h":
-            temp_value = 0.0001 * decode_int(result)
-            # ignore wrong data , not clear where it comes from...
-            if temp_value > 1000:
-                self.log.debug("discarding %s, out of range", temp_value)
-                return
-            else:
-                self._dp_values[dp_id] = temp_value
-
-        elif dp_type == "DPT_Scaling":
-            self._dp_values[dp_id] = decode_scaling(result)
-
-        elif dp_type == "DPT_HVACMode":
-            self._dp_values[dp_id] = decode_dict(result, HVACModes)
-
-        elif dp_type == "DPT_HVACMode_CWL":
-            self._dp_values[dp_id] = decode_dict(result, HVACModes_CWL)
-
-        elif dp_type == "DPT_DHWMode":
-            self._dp_values[dp_id] = decode_dict(result, DHWModes)
-
-        elif dp_type == "DPT_HVACContrMode":
-            self._dp_values[dp_id] = decode_dict(result, HVACContrModes)
-
-        elif dp_type == "DPT_Date":
-            self._dp_values[dp_id] = decode_date(result)
-
-        elif dp_type == "DPT_TimeOfDay":
-            self._dp_values[dp_id] = decode_time_of_day(result)
-
-        else:
-            self.log.info("datatype not implemented, fallback to INT.")
-            self._dp_values[dp_id] = decode_int(result)
-
-        if self._dp_values[dp_id] is None:
-            self.log.info("error decoding DP")
-
-        if dp_id in self._callback_on_data.keys():  # pylint: disable=C0201
+        if dp_id in self._callback_on_data:
             self._callback_on_data[dp_id]()
         else:
             self.log.debug("no callback for dp.")
@@ -336,7 +361,7 @@ class Ism8(asyncio.Protocol):
         """
         # return if value is out of range
         if not validate_dp_range(dp_id, value):
-            self.log.error("data validation failed. data may be out of range.")
+            self.log.error(f"data validation failed for {value}. May be out of range.")
             return False
         if not self._connected or self._transport is None:
             self.log.error("No Connection to ISM8 Module")
@@ -355,6 +380,7 @@ class Ism8(asyncio.Protocol):
         self._transport.write(update_msg)
         # after sending update internal cache
         self._dp_values[dp_id] = value
+        self.log.debug(f"updated cache with {value}")
         return True
 
     def build_message(self, dp_id: int, encoded_value: bytearray) -> bytearray:
@@ -385,50 +411,16 @@ class Ism8(asyncio.Protocol):
             self.log.info(f"unknown datapoint: {dp_id}, data: {value}")
             return None
 
-        if dp_type in (
-            "DPT_Switch",
-            "DPT_Bool",
-            "DPT_Enable",
-            "DPT_OpenClose",
-        ):
-            return encode_bool(value)
+        encoder = self._ENCODERS.get(dp_type)
+        if encoder:
+            return encoder(value)
 
-        elif dp_type in (
-            "DPT_Value_Temp",
-            "DPT_Value_Tempd",
-            "DPT_Tempd",
-            "DPT_Value_Pres",
-            "DPT_Power",
-            "DPT_Value_Volume_Flow",
-        ):
-            return encode_float(value)
-
-        elif dp_type == "DPT_Scaling":
-            return encode_scaling(value)
-
-        elif dp_type == "DPT_HVACMode":
-            return encode_dict(value, HVACModes)
-
-        elif dp_type == "DPT_HVACMode_CWL":
-            return encode_dict(value, HVACModes_CWL)
-
-        elif dp_type == "DPT_HVACContrMode":
-            return encode_dict(value, HVACContrModes)
-
-        elif dp_type == "DPT_DHWMode":
-            return encode_dict(value, DHWModes)
-
-        elif dp_type == "DPT_Date":
-            return encode_date(value)
-
-        elif dp_type == "DPT_TimeOfDay":
-            return encode_time_of_day(value)
-        else:
-            self.log.error(f"writing datatype not implemented: {dp_type}")
-            return None
+        self.log.error(f"writing datatype not implemented: {dp_type}")
+        return None
 
     def read_sensor(self, dp_id: int):
         """
         Returns sensor value from private dictionary of sensor-readings
         """
         return self._dp_values.get(dp_id, None)
+

@@ -18,7 +18,15 @@ classifiers = [
 ]
 keywords = ["Home Assistant", "Wolf", "HVAC"]
 dependencies = ["asyncio"]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
+
+[project.optional-dependencies]
+dev = [
+    "pre-commit",
+    "ruff",
+    "codespell",
+    "pytest",
+]
 
 [project.urls]
 Repository = "https://github.com/marcschmiedchen/wolf_ism8"
@@ -31,3 +39,26 @@ version = {attr = "wolf_ism8.__version__"}
 pythonpath = "."
 log_cli = 'True'
 log_cli_level="DEBUG"
+
+[tool.ruff]
+line-length = 88
+target-version = "py38"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "C",    # flake8-comprehensions
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["wolf_ism8"]
+
+[tool.codespell]
+skip = "./.git,./.venv,./.pytest_cache,./wolf_ism8.egg-info"
+ignore-words-list = "nbr"

@@ -1,4 +1,4 @@
-"""constnants for Wolf ISM8 API"""
+"""constants for Wolf ISM8 API"""
 
 import datetime
 

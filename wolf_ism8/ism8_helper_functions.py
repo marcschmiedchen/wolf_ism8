@@ -1,14 +1,15 @@
 # pylint: disable-msg=W1203
 """contains encode/decode helper functions for ISM8 datapoints"""
-import logging
 import datetime
+import logging
+
 from .ism8_constants import (
-    DP_VALUES_ALLOWED,
     DATAPOINTS,
+    DATATYPES,
+    DP_VALUES_ALLOWED,
     DT_PYTHONTYPE,
     IX_RW_FLAG,
     IX_TYPE,
-    DATATYPES,
 )
 
 log = logging.getLogger(__name__)
@@ -16,11 +17,10 @@ log = logging.getLogger(__name__)
 
 def decode_dict(mode_number: int, mode_dic: dict) -> str | None:
     """returns a human readable string from the API-encoded mode_number"""
-    if mode_number in mode_dic.keys():
-        return mode_dic[mode_number]
-    else:
+    res = mode_dic.get(mode_number)
+    if res is None:
         log.error(f"mode number {mode_number} not implemented:")
-        return None
+    return res
 
 
 def encode_dict(mode: str, mode_dic: dict) -> bytearray | None:
