@@ -38,6 +38,7 @@ from .ism8_helper_functions import (
     encode_float,
     encode_scaling,
     encode_time_of_day,
+    postprocess_data,
     validate_dp_range,
 )
 
@@ -288,8 +289,10 @@ class Ism8(asyncio.Protocol):
             if dp_length > 0 and dp_command == 0x03:
                 dp_value = msg[data_ptr + 10 : data_ptr + 10 + dp_length]
                 self.log.debug(f"{dp_id=} => {dp_value.hex(':')=} =>")
-                self.decode_datapoint(dp_id, dp_value)
-                self.log.debug(f"decoded to {self._dp_values[dp_id]}")
+                if self.decode_datapoint(dp_id, dp_value):
+                    self.log.debug(f"decoded to {self._dp_values[dp_id]}")
+                else:
+                    self.log.info("no data decoded from msg")
             else:
                 self.log.debug("data discarded due to zero data length")
                 return False
@@ -309,50 +312,22 @@ class Ism8(asyncio.Protocol):
             self.log.debug(f"unknown datapoint: {dp_id}, data:{raw_bytes.hex(':')}")
             return
 
-        result = int.from_bytes(raw_bytes, byteorder="big")
-
         if dp_type not in self._DECODERS:
             self.log.info(f"datatype {dp_type} not implemented, fallback to INT.")
-
         decoder = self._DECODERS.get(dp_type, decode_int)
-        value = decoder(result)
+
+        value = decoder(int.from_bytes(raw_bytes, byteorder="big"))
+        value = postprocess_data(self, dp_id, dp_type, value)
 
         if value is None:
-            self.log.info(f"error decoding DP {dp_id}")
-            return
-
-        # post-processing for complex problems
-        # sometimes there are unreasonably high power values -> drop them.
-        if dp_type == "DPT_Power" and value > 1000:
-            self.log.debug("discarding %s, out of range", value)
-            return
-
-        # sometimes there are jumps to zero in temperature -> drop them.
-        if dp_type in ("DPT_Tempd", "DPT_Value_Temp", "DPT_Value_Tempd"):
-            if dp_id in self._dp_values:
-                if abs(value)<0.01 and abs(self._dp_values[dp_id]) > 10:
-                    self.log.debug("discarding unexpected jump to zero")
-                    return
-
-        # sometimes there are unreasonably high Flow Rates -> drop them.
-        if dp_type == "DPT_FlowRate_m3/h":
-            if value > 10000000:
-                self.log.debug("discarding %s, out of range", value)
-                return
-        # sometimes there are unreasonably LOW Flow Rates. Was reported as an issue
-        # starting with FW 1.9. Seems the scaling factor is "1" in this case
-        # so values between 0.1ccm/h and 1000ccm/h are assumed to be unscaled.
-        # Bigger values get scaled down the official way(times 0.0001)
-            if  value > 1000:
-                value=value * 0.0001
-
-        self._dp_values[dp_id] = value
-
-        if dp_id in self._callback_on_data:
-            self._callback_on_data[dp_id]()
+            return False
         else:
-            self.log.debug("no callback for dp.")
-        return
+            self._dp_values[dp_id] = value
+            if dp_id in self._callback_on_data:
+                self._callback_on_data[dp_id]()
+            else:
+                self.log.debug("no callback for dp.")
+            return True
 
     def send_dp_value(self, dp_id: int, value) -> bool:
         """

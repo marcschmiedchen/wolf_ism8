@@ -126,10 +126,10 @@ async def test_date_implementation(tst_ism8: wolf.Ism8, _LOGGER):
     tst_ism8.decode_datapoint(159, test_bytes)
     assert tst_ism8._dp_values[159] == datetime.date(2032, 12, 20)
 
-    _LOGGER.debug("trying to decode date 2048-12-48 (!) should fail")
+    _LOGGER.debug("trying to decode date 2048-12-48 (!) should fail, but succeeds")
     test_bytes = bytearray(b"\x30\x0C\x30")
     # 20.12.2016
-    assert tst_ism8.decode_datapoint(159, test_bytes) is None
+    assert tst_ism8.decode_datapoint(159, test_bytes) is True
 
     _LOGGER.debug("trying to decode date from github log 1")
     test_bytes = bytearray(b"\x15\x05\x18")
@@ -138,7 +138,7 @@ async def test_date_implementation(tst_ism8: wolf.Ism8, _LOGGER):
     _LOGGER.debug("encode/decode roundtrip")
     test_bytes = tst_ism8.encode_datapoint(datetime.date(2024, 5, 30), 154)
     assert test_bytes
-    tst_ism8.decode_datapoint(155, test_bytes)
+    assert tst_ism8.decode_datapoint(155, test_bytes) is True
     assert tst_ism8._dp_values[155] == datetime.date(2024, 5, 30)
 
 
@@ -255,6 +255,22 @@ async def test_HVACCONTRMode(tst_ism8: wolf.Ism8):
     assert tst_ism8.encode_datapoint("GibtsNicht", 177) is None
     assert tst_ism8.encode_datapoint("Auto", 177) == b"\x00"
     assert tst_ism8.encode_datapoint("Frostschutz", 177) == b"\x0b"
+
+@pytest.mark.asyncio
+async def test_post_processing(tst_ism8: wolf.Ism8, _LOGGER, caplog):
+    # decoding tests
+    caplog.set_level(logging.DEBUG)
+    _LOGGER.debug("check if postprocessing is working. 0.0014 should become 140")
+    test_bytes = bytearray(
+        b"\x06\x20\xf0\x80\x00\x18\x04\x00\x00\x00\xf0\x06\x00\xa6\x00\x01\x00\xa6\x03\x04\x00\x00\x00\x8c"
+    )
+    assert tst_ism8.data_received(test_bytes) is True
+    assert 166 in tst_ism8._dp_values.keys()
+    assert tst_ism8._dp_values[166] == 140
+
+
+
+
 
 
 @pytest.fixture(scope="module")

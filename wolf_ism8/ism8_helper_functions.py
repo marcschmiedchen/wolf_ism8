@@ -163,3 +163,36 @@ def validate_dp_range(dp_id: int, value) -> bool:
             log.error(f"value {value} is out of range")
             return False
     return True
+
+
+def postprocess_data(self, dp_id, dp_type, value):
+    """
+    post-processing for complex problems
+    """
+    # sometimes there are unreasonably high power values -> drop them.
+    if dp_type == "DPT_Power" and value > 1000:
+        self.log.debug("discarding %s, out of range", value)
+        return None
+
+    # sometimes there are jumps to zero in temperature -> drop them.
+    if dp_type in ("DPT_Tempd", "DPT_Value_Temp", "DPT_Value_Tempd"):
+        if dp_id in self._dp_values:
+            if abs(value) < 0.01 and abs(self._dp_values[dp_id]) > 10:
+                self.log.debug("discarding unexpected jump to zero")
+                return None
+
+    # sometimes there are unreasonably high Flow Rates -> drop them.
+    if dp_type == "DPT_FlowRate_m3/h":
+        if value > 10000000:
+            self.log.debug("discarding %s, out of range", value)
+            return None
+        # sometimes there are unreasonably LOW Flow Rates. Was reported as an issue
+        # starting with FW 1.9. Seems the scaling factor is "1" in this case
+        # so values between 0.1ccm/h and 1000ccm/h are assumed to be unscaled.
+        # Bigger values get scaled down the official way(times 0.0001)
+        if value < 1000:
+            return value
+        else:
+            return value * 0.0001
+
+    return value
