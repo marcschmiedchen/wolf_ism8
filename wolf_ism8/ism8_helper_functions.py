@@ -19,7 +19,7 @@ def decode_dict(mode_number: int, mode_dic: dict) -> str | None:
     """returns a human readable string from the API-encoded mode_number"""
     res = mode_dic.get(mode_number)
     if res is None:
-        log.error(f"mode number {mode_number} not implemented:")
+        log.warning(f"mode number {mode_number} not implemented:")
     return res
 
 
@@ -174,12 +174,13 @@ def postprocess_data(self, dp_id, dp_type, value):
         self.log.debug("discarding %s, out of range", value)
         return None
 
-    # sometimes there are jumps to zero in temperature -> drop them.
-    if dp_type in ("DPT_Tempd", "DPT_Value_Temp", "DPT_Value_Tempd"):
-        if dp_id in self._dp_values:
-            if abs(value) < 0.01 and abs(self._dp_values[dp_id]) > 10:
-                self.log.debug("discarding unexpected jump to zero")
-                return None
+    # # sometimes there are jumps to zero in temperature -> drop them.
+    # # commented out because it filters valid jumps for unused sensors
+    # if dp_type in ("DPT_Tempd", "DPT_Value_Temp", "DPT_Value_Tempd"):
+    #     if dp_id in self._dp_values:
+    #         if abs(value) < 0.01 and abs(self._dp_values[dp_id]) > 10:
+    #             self.log.debug("discarding unexpected jump to zero")
+    #             return None
 
     # sometimes there are unreasonably high Flow Rates -> drop them.
     if dp_type == "DPT_FlowRate_m3/h":

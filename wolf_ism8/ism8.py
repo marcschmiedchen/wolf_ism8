@@ -169,7 +169,7 @@ class Ism8(asyncio.Protocol):
         """factory method for asyncio"""
         return self
 
-    def get_remote_ip_adress(self):
+    def get_remote_ip_address(self):
         """returns the IP address of the ISM8 module after connection"""
         return self._remote_ip_address
 
