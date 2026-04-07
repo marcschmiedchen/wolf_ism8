@@ -14,6 +14,10 @@ from .ism8_constants import (
 
 log = logging.getLogger(__name__)
 
+MAX_DISCARDS = 2
+JUMP_FILTER_DELTA = 20
+_JUMP_FILTER_TYPES = frozenset(("DPT_Value_Temp", "DPT_Value_Tempd", "DPT_Tempd"))
+
 
 def decode_dict(mode_number: int, mode_dic: dict) -> str | None:
     """returns a human readable string from the API-encoded mode_number"""
@@ -174,13 +178,20 @@ def postprocess_data(self, dp_id, dp_type, value):
         self.log.debug("discarding %s, out of range", value)
         return None
 
-    # # sometimes there are jumps to zero in temperature -> drop them.
-    # # commented out because it filters valid jumps for unused sensors
-    # if dp_type in ("DPT_Tempd", "DPT_Value_Temp", "DPT_Value_Tempd"):
-    #     if dp_id in self._dp_values:
-    #         if abs(value) < 0.01 and abs(self._dp_values[dp_id]) > 10:
-    #             self.log.debug("discarding unexpected jump to zero")
-    #             return None
+    # jump filter: discard temperature values that jump more than JUMP_FILTER_DELTA.
+    # after MAX_DISCARDS consecutive discards, accept unconditionally (cache reset).
+    cached = self._dp_values.get(dp_id)
+    if dp_type in _JUMP_FILTER_TYPES and cached is not None:
+        if abs(value - cached) > JUMP_FILTER_DELTA:
+            count = self._dp_discard_count.get(dp_id, 0) + 1
+            if count <= MAX_DISCARDS:
+                self._dp_discard_count[dp_id] = count
+                self.log.debug(
+                    "jump filter: discarding %s -> %s for dp %d (%d/%d)",
+                    cached, value, dp_id, count, MAX_DISCARDS,
+                )
+                return None
+        self._dp_discard_count.pop(dp_id, None)
 
     # sometimes there are unreasonably high Flow Rates -> drop them.
     if dp_type == "DPT_FlowRate_m3/h":
@@ -191,9 +202,7 @@ def postprocess_data(self, dp_id, dp_type, value):
         # starting with FW 1.9. Seems the scaling factor is "1" in this case
         # so values between 0.1ccm/h and 1000ccm/h are assumed to be unscaled.
         # Bigger values get scaled down the official way(times 0.0001)
-        if value < 1000:
-            return value
-        else:
+        if value > 1000:
             return value * 0.0001
 
     return value

@@ -156,6 +156,7 @@ class Ism8(asyncio.Protocol):
     def __init__(self):
         # the datapoint-values from the device are stored and buffered here
         self._dp_values = {}
+        self._dp_discard_count = {}
         self._transport = None
         self._remote_ip_address = None
         self._connected = False
