@@ -1,8 +1,12 @@
-import logging
 import asyncio
 import datetime
+import logging
+
 import pytest
+
 import wolf_ism8 as wolf
+from wolf_ism8.ism8_helper_functions import validate_dp_range
+from wolf_ism8.ism8_helper_functions import encode_scaling
 
 
 @pytest.mark.asyncio
@@ -108,11 +112,11 @@ async def test_date_implementation(tst_ism8: wolf.Ism8, _LOGGER):
     assert tst_ism8.encode_datapoint(datetime.date(2024, 5, 30), 154) is not None
 
     # return if value is out of range
-    assert wolf.validate_dp_range(154, datetime.date(2024, 5, 30)) is True
+    assert validate_dp_range(154, datetime.date(2024, 5, 30)) is True
 
     # return if value is out of range
     _LOGGER.debug("trying to encode date 2100-05-30. should be out of range")
-    assert wolf.validate_dp_range(154, datetime.date(2100, 5, 30)) is False
+    assert validate_dp_range(154, datetime.date(2100, 5, 30)) is False
 
     # decoding tests
     _LOGGER.debug("trying to decode date 2007-06-04")
@@ -121,13 +125,13 @@ async def test_date_implementation(tst_ism8: wolf.Ism8, _LOGGER):
     assert tst_ism8._dp_values[159] == datetime.date(2007, 6, 4)
 
     _LOGGER.debug("trying to decode date 2032-12-20")
-    test_bytes = bytearray(b"\x14\x0C\x20")
+    test_bytes = bytearray(b"\x14\x0c\x20")
     # 20.12.2016
     tst_ism8.decode_datapoint(159, test_bytes)
     assert tst_ism8._dp_values[159] == datetime.date(2032, 12, 20)
 
     _LOGGER.debug("trying to decode date 2048-12-48 (!) should fail, but succeeds")
-    test_bytes = bytearray(b"\x30\x0C\x30")
+    test_bytes = bytearray(b"\x30\x0c\x30")
     # 20.12.2016
     assert tst_ism8.decode_datapoint(159, test_bytes) is True
 
@@ -169,7 +173,7 @@ async def test_time_of_day_implementation(tst_ism8: wolf.Ism8):
     assert tst_ism8._dp_values[157] == datetime.time(hour=16, minute=56)
 
     print("trying to decode time 48:12:116 (!) should fail, but datetime is robust")
-    test_bytes = bytearray(b"\x30\x0C\x60")
+    test_bytes = bytearray(b"\x30\x0c\x60")
     tst_ism8.decode_datapoint(161, test_bytes)
 
     print("encode/decode roundtrip")
@@ -184,8 +188,8 @@ async def test_scaling_implementation(tst_ism8: wolf.Ism8):
     """
     test scaling implementation
     """
-    assert wolf.encode_scaling(100) == b"\xff"
-    assert wolf.encode_scaling(0) == b"\x00"
+    assert encode_scaling(100) == b"\xff"
+    assert encode_scaling(0) == b"\x00"
 
 
 @pytest.mark.asyncio
@@ -195,12 +199,12 @@ async def test_write_HVACMode57(tst_ism8: wolf.Ism8, _LOGGER):
     """
     _LOGGER.debug("trying to change HVAC modes")
     # not in range
-    assert wolf.validate_dp_range(57, "Comfort") is False
+    assert validate_dp_range(57, "Comfort") is False
     # ok
-    assert wolf.validate_dp_range(57, "Automatikbetrieb") is True
-    assert wolf.validate_dp_range(57, "Heizbetrieb") is True
-    assert wolf.validate_dp_range(57, "Standby") is True
-    assert wolf.validate_dp_range(57, "Automatikbetrieb kühlen") is True
+    assert validate_dp_range(57, "Automatikbetrieb") is True
+    assert validate_dp_range(57, "Heizbetrieb") is True
+    assert validate_dp_range(57, "Standby") is True
+    assert validate_dp_range(57, "Automatikbetrieb kühlen") is True
 
 
 @pytest.mark.asyncio
@@ -210,19 +214,19 @@ async def test_write_HVACMode149(tst_ism8: wolf.Ism8, _LOGGER):
     """
     _LOGGER.debug("test HVAC modes for CWL and direct heating")
     # not in range
-    assert wolf.validate_dp_range(149, "Comfort") is False
+    assert validate_dp_range(149, "Comfort") is False
     # ok
-    assert wolf.validate_dp_range(149, "Automatikbetrieb") is True
-    assert wolf.validate_dp_range(149, "Heizbetrieb") is False
-    assert wolf.validate_dp_range(149, "Standby") is True
-    assert wolf.validate_dp_range(149, "Feuchteschutz") is True
+    assert validate_dp_range(149, "Automatikbetrieb") is True
+    assert validate_dp_range(149, "Heizbetrieb") is False
+    assert validate_dp_range(149, "Standby") is True
+    assert validate_dp_range(149, "Feuchteschutz") is True
     # not in range
-    assert wolf.validate_dp_range(70, "Comfort") is False
+    assert validate_dp_range(70, "Comfort") is False
     # ok
-    assert wolf.validate_dp_range(70, "Automatikbetrieb") is True
-    assert wolf.validate_dp_range(70, "Heizbetrieb") is True
-    assert wolf.validate_dp_range(70, "Standby") is True
-    assert wolf.validate_dp_range(70, "Feuchteschutz") is False
+    assert validate_dp_range(70, "Automatikbetrieb") is True
+    assert validate_dp_range(70, "Heizbetrieb") is True
+    assert validate_dp_range(70, "Standby") is True
+    assert validate_dp_range(70, "Feuchteschutz") is False
 
 
 @pytest.mark.asyncio
@@ -231,9 +235,9 @@ async def test_write_DHWMode(tst_ism8: wolf.Ism8):
     58 Programmwahl Warmwasser DPT_DHWMode Out / In
     """
     # not in range
-    assert wolf.validate_dp_range(58, "GibtsNicht") is False
-    assert wolf.validate_dp_range(58, "Automatikbetrieb") is True
-    assert wolf.validate_dp_range(58, "LegioProtect") is False
+    assert validate_dp_range(58, "GibtsNicht") is False
+    assert validate_dp_range(58, "Automatikbetrieb") is True
+    assert validate_dp_range(58, "LegioProtect") is False
 
 
 @pytest.mark.asyncio
@@ -256,6 +260,51 @@ async def test_HVACCONTRMode(tst_ism8: wolf.Ism8):
     assert tst_ism8.encode_datapoint("Auto", 177) == b"\x00"
     assert tst_ism8.encode_datapoint("Frostschutz", 177) == b"\x0b"
 
+
+@pytest.mark.asyncio
+async def test_jump_filter(tst_ism8: wolf.Ism8, _LOGGER):
+    """
+    4: ('Heizgeraet1', 'Kesseltemperatur', 'DPT_Value_Temp', False)
+    Tests the jump filter in postprocess_data:
+    - values deviating more than 20°C from cached are discarded
+    - a good value after a discard resets the counter
+    - after MAX_DISCARDS (2) consecutive discards the next value is accepted
+    """
+    bytes_40c = bytearray(b"\x0f\xd0")  # 40.0°C
+    bytes_39c = bytearray(b"\x0f\x9e")  # 39.0°C
+    bytes_0c = bytearray(b"\x00\x00")  # 0.0°C
+
+    # establish initial cached value, ensure clean counter state
+    tst_ism8._dp_discard_count.pop(4, None)
+    assert tst_ism8.decode_datapoint(4, bytes_40c) is True
+    assert tst_ism8._dp_values[4] == pytest.approx(40.0)
+
+    # first jump (delta=40 > 20): discard, counter=1
+    assert tst_ism8.decode_datapoint(4, bytes_0c) is False
+    assert tst_ism8._dp_values[4] == pytest.approx(40.0)
+    assert tst_ism8._dp_discard_count[4] == 1
+
+    # good value within range resets counter
+    assert tst_ism8.decode_datapoint(4, bytes_39c) is True
+    assert tst_ism8._dp_values[4] == pytest.approx(39.0)
+    assert 4 not in tst_ism8._dp_discard_count
+
+    # first jump from 39°C (delta=39 > 20): discard, counter=1
+    assert tst_ism8.decode_datapoint(4, bytes_0c) is False
+    assert tst_ism8._dp_values[4] == pytest.approx(39.0)
+    assert tst_ism8._dp_discard_count[4] == 1
+
+    # second consecutive jump: discard, counter=2 (== MAX_DISCARDS)
+    assert tst_ism8.decode_datapoint(4, bytes_0c) is False
+    assert tst_ism8._dp_values[4] == pytest.approx(39.0)
+    assert tst_ism8._dp_discard_count[4] == 2
+
+    # third consecutive jump exceeds MAX_DISCARDS: accepted, counter cleared
+    assert tst_ism8.decode_datapoint(4, bytes_0c) is True
+    assert tst_ism8._dp_values[4] == pytest.approx(0.0)
+    assert 4 not in tst_ism8._dp_discard_count
+
+
 @pytest.mark.asyncio
 async def test_post_processing(tst_ism8: wolf.Ism8, _LOGGER, caplog):
     # decoding tests
@@ -267,10 +316,6 @@ async def test_post_processing(tst_ism8: wolf.Ism8, _LOGGER, caplog):
     assert tst_ism8.data_received(test_bytes) is True
     assert 166 in tst_ism8._dp_values.keys()
     assert tst_ism8._dp_values[166] == 140
-
-
-
-
 
 
 @pytest.fixture(scope="module")

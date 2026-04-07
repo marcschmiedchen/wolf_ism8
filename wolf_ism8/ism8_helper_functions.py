@@ -10,6 +10,10 @@ from .ism8_constants import (
     DT_PYTHONTYPE,
     IX_RW_FLAG,
     IX_TYPE,
+    DHWModes,
+    HVACContrModes,
+    HVACModes,
+    HVACModes_CWL,
 )
 
 log = logging.getLogger(__name__)
@@ -139,6 +143,50 @@ def encode_time_of_day(value: datetime.time) -> bytearray:
     encoded_time.append(value.second)
     log.debug(f"encoded {value} -> {encoded_time.hex(':')}")
     return encoded_time
+
+
+_ENCODERS = {
+    "DPT_Switch": encode_bool,
+    "DPT_Bool": encode_bool,
+    "DPT_Enable": encode_bool,
+    "DPT_OpenClose": encode_bool,
+    "DPT_Scaling": encode_scaling,
+    "DPT_Value_Temp": encode_float,
+    "DPT_Value_Tempd": encode_float,
+    "DPT_Tempd": encode_float,
+    "DPT_Value_Pres": encode_float,
+    "DPT_Power": encode_float,
+    "DPT_Value_Volume_Flow": encode_float,
+    "DPT_HVACMode": lambda v: encode_dict(v, HVACModes),
+    "DPT_HVACMode_CWL": lambda v: encode_dict(v, HVACModes_CWL),
+    "DPT_HVACContrMode": lambda v: encode_dict(v, HVACContrModes),
+    "DPT_DHWMode": lambda v: encode_dict(v, DHWModes),
+    "DPT_Date": encode_date,
+    "DPT_TimeOfDay": encode_time_of_day,
+}
+
+_DECODERS = {
+    "DPT_Switch": decode_bool,
+    "DPT_Bool": decode_bool,
+    "DPT_Enable": decode_bool,
+    "DPT_OpenClose": decode_bool,
+    "DPT_Scaling": decode_scaling,
+    "DPT_Value_Temp": decode_float,
+    "DPT_Value_Tempd": decode_float,
+    "DPT_Tempd": decode_float,
+    "DPT_Value_Pres": decode_float,
+    "DPT_Power": decode_float,
+    "DPT_Value_Volume_Flow": decode_float,
+    "DPT_ActiveEnergy": decode_int,
+    "DPT_ActiveEnergy_kWh": decode_int,
+    "DPT_FlowRate_m3/h": decode_int,
+    "DPT_HVACMode": lambda v: decode_dict(v, HVACModes),
+    "DPT_HVACMode_CWL": lambda v: decode_dict(v, HVACModes_CWL),
+    "DPT_HVACContrMode": lambda v: decode_dict(v, HVACContrModes),
+    "DPT_DHWMode": lambda v: decode_dict(v, DHWModes),
+    "DPT_Date": decode_date,
+    "DPT_TimeOfDay": decode_time_of_day,
+}
 
 
 def validate_dp_range(dp_id: int, value) -> bool:
