@@ -49,7 +49,7 @@ async def test_write_float_DP(tst_ism8: wolf.Ism8, _LOGGER):
     """
     _LOGGER.debug("trying to change warmwasserSollTemp to 51.4")
     tst_ism8.send_dp_value(56, 51.8)
-    encoded_value = tst_ism8.encode_datapoint(51.8, 56)
+    encoded_value = tst_ism8.encode_datapoint(56, 51.8)
     assert encoded_value is not None
     update_msg = tst_ism8.build_message(56, encoded_value)
     assert update_msg is not None
@@ -109,7 +109,7 @@ async def test_network_decoding(tst_ism8: wolf.Ism8, _LOGGER, caplog):
 async def test_date_implementation(tst_ism8: wolf.Ism8, _LOGGER):
     """test of date implementation"""
     _LOGGER.debug("trying to encode date 2024-05-30")
-    assert tst_ism8.encode_datapoint(datetime.date(2024, 5, 30), 154) is not None
+    assert tst_ism8.encode_datapoint(154, datetime.date(2024, 5, 30)) is not None
 
     # return if value is out of range
     assert validate_dp_range(154, datetime.date(2024, 5, 30)) is True
@@ -140,7 +140,7 @@ async def test_date_implementation(tst_ism8: wolf.Ism8, _LOGGER):
     tst_ism8.decode_datapoint(155, test_bytes)
 
     _LOGGER.debug("encode/decode roundtrip")
-    test_bytes = tst_ism8.encode_datapoint(datetime.date(2024, 5, 30), 154)
+    test_bytes = tst_ism8.encode_datapoint(154, datetime.date(2024, 5, 30))
     assert test_bytes
     assert tst_ism8.decode_datapoint(155, test_bytes) is True
     assert tst_ism8._dp_values[155] == datetime.date(2024, 5, 30)
@@ -150,7 +150,7 @@ async def test_date_implementation(tst_ism8: wolf.Ism8, _LOGGER):
 async def test_time_of_day_implementation(tst_ism8: wolf.Ism8):
     """ """
     print("trying to encode timeofday 12:00")
-    assert tst_ism8.encode_datapoint(datetime.time(hour=12, minute=0), 161) is not None
+    assert tst_ism8.encode_datapoint(161, datetime.time(hour=12, minute=0)) is not None
 
     # decoding tests
     print("trying to decode time 22:06:07")
@@ -177,7 +177,7 @@ async def test_time_of_day_implementation(tst_ism8: wolf.Ism8):
     tst_ism8.decode_datapoint(161, test_bytes)
 
     print("encode/decode roundtrip")
-    test_bytes = tst_ism8.encode_datapoint(datetime.time(hour=15, minute=38), 156)
+    test_bytes = tst_ism8.encode_datapoint(156, datetime.time(hour=15, minute=38))
     assert test_bytes is not None
     tst_ism8.decode_datapoint(156, test_bytes)
     assert tst_ism8._dp_values[156] == datetime.time(hour=15, minute=38)
@@ -256,9 +256,9 @@ async def test_HVACCONTRMode(tst_ism8: wolf.Ism8):
     tst_ism8.decode_datapoint(177, bytearray(b"\x09"))
     assert tst_ism8._dp_values[177] == "Fan Only"
 
-    assert tst_ism8.encode_datapoint("GibtsNicht", 177) is None
-    assert tst_ism8.encode_datapoint("Auto", 177) == b"\x00"
-    assert tst_ism8.encode_datapoint("Frostschutz", 177) == b"\x0b"
+    assert tst_ism8.encode_datapoint(177, "GibtsNicht") is None
+    assert tst_ism8.encode_datapoint(177, "Auto") == b"\x00"
+    assert tst_ism8.encode_datapoint(177, "Frostschutz") == b"\x0b"
 
 
 @pytest.mark.asyncio

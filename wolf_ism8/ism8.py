@@ -146,11 +146,11 @@ class Ism8(asyncio.Protocol):
 
     def register_callback(self, cb, dp_nbr):
         """registers a callback for a datapoint; is called when data is received"""
-        self._callback_on_data.update({dp_nbr: cb})
+        self._callback_on_data[dp_nbr] = cb
 
     def remove_callback(self, dp_nbr):
         """removes a callback for a datapoint"""
-        self._callback_on_data.pop(dp_nbr)
+        self._callback_on_data.pop(dp_nbr, None)
 
     def register_connection_callback(self, cb):
         """registers a callback for the connection; is called when connection is made"""
@@ -162,7 +162,7 @@ class Ism8(asyncio.Protocol):
         """returns connection status"""
         return self._connected
 
-    def data_received(self, data) -> None:
+    def data_received(self, data) -> bool:
         """is called whenever data is ready. Conducts buffering, slices the messages
         and extracts the payload for further processing. Returns false if ISM8 data
         could not be processed"""
@@ -176,25 +176,19 @@ class Ism8(asyncio.Protocol):
         # loop from header to header (if there are more than 1)
         # loop ends when no header is found in the remaining data
         while ptr >= 0:
-            # self.log.debug(f"found header at {ptr}")
             # smallest processable data: KNX header (6 bytes) and conn. header (4bytes)
             if len(data[ptr:]) >= 10:
                 # frame size is encoded at offset +4 (2bytes)
                 frame_size = 256 * data[ptr + 4] + data[ptr + 5]
-                # self.log.debug(f"msg length = {frame_size}")
             else:
-                # self.log.error("Broken header structure. Skipping data.")
                 return False
 
             if len(data[ptr:]) < frame_size:
-                # self.log.debug(f"data length = {len(data)}")
-                # self.log.error("Object server message too short. Skipping data.")
                 return False
 
             # process next ObjectServer message (see docs), starts at ISM-header+10
             msg = data[ptr + 10 : ptr + frame_size]
             if self.process_object_server_msg(msg):
-                # self.log.debug("Message successfully processed, sending ACK")
                 # send ACK to ISM8 according to API: ISM Header,
                 # then msg-length(17), then ACK w/ 2 bytes from original msg
                 ack_msg = bytearray(ISM_ACK_DP_MSG)
@@ -205,12 +199,11 @@ class Ism8(asyncio.Protocol):
             else:
                 self.log.info("Message faulty, maybe resend by ISM8. No ACK.")
 
-            # prepare to get decode message; advance Ptr to next Msg if bytes are left
+            # advance ptr to next message if bytes are left
             if len(data[ptr + frame_size :]) > 0:
                 self.log.debug(f"more data: {len(data[ptr + frame_size :])} byte.")
                 ptr = data.find(ISM_HEADER, ptr + frame_size)
             else:
-                # self.log.debug("End of network buffer.")
                 break
         return True
 
@@ -225,7 +218,6 @@ class Ism8(asyncio.Protocol):
         data_ptr = 0
         counter = 1
         while counter <= number_of_datapoints:
-            # self.log.debug(f"processing datapoint {counter} / {number_of_datapoints}")
             dp_id = msg[data_ptr + 6] * 256 + msg[data_ptr + 7]
             dp_command = msg[data_ptr + 8]
             dp_length = msg[data_ptr + 9]
@@ -245,7 +237,7 @@ class Ism8(asyncio.Protocol):
             data_ptr = data_ptr + 4 + dp_length
         return True
 
-    def decode_datapoint(self, dp_id: int, raw_bytes: bytes) -> None:
+    def decode_datapoint(self, dp_id: int, raw_bytes: bytes) -> bool | None:
         """
         receives raw bytes, decodes them according to ISM8-API data type
         into int/str/float values and stores them in dictionary
@@ -287,7 +279,7 @@ class Ism8(asyncio.Protocol):
             return False
         # now encode the value according to ISM8 spec, depending on data-type
         # if encoding fails, None is returned an no data is sent
-        encoded_value = self.encode_datapoint(value, dp_id)
+        encoded_value = self.encode_datapoint(dp_id, value)
         if encoded_value is None:
             self.log.error(f"Encoding failed for datapoint {dp_id} with value {value}")
             return False
@@ -306,14 +298,14 @@ class Ism8(asyncio.Protocol):
         """builds a message for ISM8 for one datapoint, according to ISM8 specs"""
         update_msg = bytearray()
         update_msg.extend(ISM_HEADER)
-        update_msg.extend((0).to_bytes(2, byteorder="big"))
+        update_msg.extend(b"\x00\x00")
         update_msg.extend(ISM_CONN_HEADER)
         update_msg.extend(ISM_SERVICE_TRANSMIT)
         update_msg.extend(dp_id.to_bytes(2, byteorder="big"))
-        update_msg.extend((1).to_bytes(2, byteorder="big"))
+        update_msg.extend(b"\x00\x01")
 
         update_msg.extend(dp_id.to_bytes(2, byteorder="big"))
-        update_msg.extend((0).to_bytes(1, byteorder="big"))
+        update_msg.extend(b"\x00")
         update_msg.extend((len(encoded_value)).to_bytes(1, byteorder="big"))
         update_msg.extend(encoded_value)
         frame_size = len(update_msg).to_bytes(2, byteorder="big")
@@ -321,7 +313,7 @@ class Ism8(asyncio.Protocol):
         update_msg[5] = frame_size[1]
         return update_msg
 
-    def encode_datapoint(self, value, dp_id) -> bytearray | None:
+    def encode_datapoint(self, dp_id: int, value) -> bytearray | None:
         """encodes a Value to ISM8 bytecode according to specs"""
         # safety check if DP exists, get type
         if dp_id in DATAPOINTS:

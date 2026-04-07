@@ -63,7 +63,7 @@ def decode_bool(value: int) -> bool:
 
 def encode_bool(value: int) -> bytearray:
     """encodes a boolean value from int data"""
-    return bytearray(b"\x01") if bool(value) is True else bytearray(b"\x00")
+    return bytearray(b"\x01") if value else bytearray(b"\x00")
 
 
 def decode_int(value: int) -> int:
@@ -105,7 +105,6 @@ def encode_float(value: float) -> bytearray:
     data[1] |= _mantisse & 0xFF
     for byte in data:
         encoded_float.append(byte)
-    # log.debug(f"encoded {input} -> {encoded_float.hex(':')}")
     return encoded_float
 
 
@@ -191,6 +190,9 @@ _DECODERS = {
 
 def validate_dp_range(dp_id: int, value) -> bool:
     """checks if value is valid for the datapoint before sending to ISM"""
+    if dp_id not in DATAPOINTS:
+        log.error(f"datapoint {dp_id} is unknown")
+        return False
     # check if dp is R/O
     if not DATAPOINTS[dp_id][IX_RW_FLAG]:
         log.error(f"datapoint {dp_id} is not writable")
