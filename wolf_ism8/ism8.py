@@ -11,7 +11,7 @@ from .ism8_constants import (
     DP_VALUES_ALLOWED,
     DT_UNIT,
     ISM_ACK_DP_MSG,
-    ISM_CONN_HEADER,
+    ISM_CONN_HEAD,
     ISM_HEADER,
     ISM_REQ_DP_MSG,
     ISM_SERVICE_TRANSMIT,
@@ -270,7 +270,7 @@ class Ism8(asyncio.Protocol):
         sends values for a (writable) datapoint in ISM8. Before message is sent,
         several checks are performed. Return true if successful, false otherwise.
         """
-        # return if value is out of range
+        # return early if value is out of range
         if not validate_dp_range(dp_id, value):
             self.log.error(f"data validation failed for {value}. May be out of range.")
             return False
@@ -284,10 +284,9 @@ class Ism8(asyncio.Protocol):
             self.log.error(f"Encoding failed for datapoint {dp_id} with value {value}")
             return False
 
-        # prepare dataframe
+        # prepare dataframe & send
         update_msg = self.build_message(dp_id, encoded_value)
         self.log.debug(f"sending datapoint number {dp_id} as {encoded_value}")
-        # send message to ISM8
         self._transport.write(update_msg)
         # after sending update internal cache
         self._dp_values[dp_id] = value
@@ -299,7 +298,7 @@ class Ism8(asyncio.Protocol):
         update_msg = bytearray()
         update_msg.extend(ISM_HEADER)
         update_msg.extend(b"\x00\x00")
-        update_msg.extend(ISM_CONN_HEADER)
+        update_msg.extend(ISM_CONN_HEAD)
         update_msg.extend(ISM_SERVICE_TRANSMIT)
         update_msg.extend(dp_id.to_bytes(2, byteorder="big"))
         update_msg.extend(b"\x00\x01")
