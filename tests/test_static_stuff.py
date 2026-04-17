@@ -5,8 +5,7 @@ import logging
 import pytest
 
 import wolf_ism8 as wolf
-from wolf_ism8.ism8_helper_functions import validate_dp_range
-from wolf_ism8.ism8_helper_functions import encode_scaling
+from wolf_ism8.ism8_helper_functions import encode_scaling, validate_dp_range
 
 
 @pytest.mark.asyncio

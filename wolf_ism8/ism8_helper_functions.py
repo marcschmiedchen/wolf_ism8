@@ -1,5 +1,6 @@
 # pylint: disable-msg=W1203
 """contains encode/decode helper functions for ISM8 datapoints"""
+
 import datetime
 import logging
 
@@ -18,7 +19,7 @@ from .ism8_constants import (
 
 log = logging.getLogger(__name__)
 
-MAX_DISCARDS = 2
+MAX_DISCARDS = 1
 JUMP_FILTER_DELTA = 20
 _JUMP_FILTER_TYPES = frozenset(("DPT_Value_Temp", "DPT_Value_Tempd", "DPT_Tempd"))
 
@@ -238,7 +239,11 @@ def postprocess_data(self, dp_id, dp_type, value):
                 self._dp_discard_count[dp_id] = count
                 self.log.debug(
                     "jump filter: discarding %s -> %s for dp %d (%d/%d)",
-                    cached, value, dp_id, count, MAX_DISCARDS,
+                    cached,
+                    value,
+                    dp_id,
+                    count,
+                    MAX_DISCARDS,
                 )
                 return None
         self._dp_discard_count.pop(dp_id, None)
