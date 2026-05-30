@@ -4,9 +4,9 @@ import datetime
 
 ISM_HEADER = b"\x06\x20\xf0\x80"
 ISM_CONN_HEAD = b"\x04\x00\x00\x00"
-ISM_SERVICE_ACK = b"\xF0\x86"
-ISM_SERVICE_TRANSMIT = b"\xF0\xC1"
-ISM_SERVICE_READ_ALL = b"\xF0\xD0"
+ISM_SERVICE_ACK = b"\xf0\x86"
+ISM_SERVICE_TRANSMIT = b"\xf0\xc1"
+ISM_SERVICE_READ_ALL = b"\xf0\xd0"
 ISM_DP_ACK = b"\x00\x00" + b"\x00\x00" + b"\x00"
 
 ISM_ACK_DP_MSG = ISM_HEADER + b"\x00\x11" + ISM_CONN_HEAD + ISM_SERVICE_ACK + ISM_DP_ACK
@@ -361,6 +361,10 @@ DHWModes = {
 }
 
 DP_VALUES_ALLOWED = {
+    2: tuple(HVACContrModes.values()),
+    15: tuple(HVACContrModes.values()),
+    28: tuple(HVACContrModes.values()),
+    41: tuple(HVACContrModes.values()),
     56: tuple(range(20, 81, 1)),
     57: tuple(HVACModes.values()),
     58: (DHWModes[0], DHWModes[2], DHWModes[4]),
@@ -419,6 +423,7 @@ DP_VALUES_ALLOWED = {
     160: (datetime.date(2000, 1, 1), datetime.date(2099, 12, 31)),
     161: (datetime.time(0, 0, 0), datetime.time(23, 59, 59)),
     162: (datetime.time(0, 0, 0), datetime.time(23, 59, 59)),
+    177: tuple(HVACContrModes.values()),
     193: (0, 1),
     194: (0, 1),
     198: tuple(range(0, 101, 1)),
@@ -432,6 +437,9 @@ DP_VALUES_ALLOWED = {
     209: tuple(range(0, 101, 1)),
     210: tuple(range(0, 90, 1)),
     211: (0, 1),
+    213: tuple(HVACContrModes.values()),
+    226: tuple(HVACContrModes.values()),
+    239: tuple(HVACContrModes.values()),
 }
 
 # index into DATATYPE DICTIONARY

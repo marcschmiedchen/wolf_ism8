@@ -14,7 +14,7 @@ classifiers = [
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
     "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",   
+    "Intended Audience :: Developers",
 ]
 keywords = ["Home Assistant", "Wolf", "HVAC"]
 dependencies = []
@@ -61,4 +61,4 @@ known-first-party = ["wolf_ism8"]
 
 [tool.codespell]
 skip = "./.git,./.venv,./.pytest_cache,./wolf_ism8.egg-info"
-ignore-words-list = "nbr"
+ignore-words-list = "nbr, Temperatur, Programm, offen, Aktive"
