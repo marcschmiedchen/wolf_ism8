@@ -177,6 +177,8 @@ _DECODERS = {
     "DPT_Value_Pres": decode_float,
     "DPT_Power": decode_float,
     "DPT_Value_Volume_Flow": decode_float,
+    "DPT_Value_1_Ucount": decode_int,
+    "DPT_Value_2_Ucount": decode_int,
     "DPT_ActiveEnergy": decode_int,
     "DPT_ActiveEnergy_kWh": decode_int,
     "DPT_FlowRate_m3/h": decode_int,

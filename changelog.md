@@ -1,3 +1,7 @@
+## Unreleased
+### Added
+- decoders for `DPT_Value_1_Ucount` and `DPT_Value_2_Ucount` (DP 251, 355-361, 372; sent by ISM8 FW 1.90). Values were already decoded via the INT fallback, but every telegram logged "datatype ... not implemented"
+
 ## 4.0 (2026-04-04)
 ### Fixed (Breaking Change!)
 - fixed spelling error in "get_remote_ip_address"
