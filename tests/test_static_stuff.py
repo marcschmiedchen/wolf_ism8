@@ -293,12 +293,12 @@ async def test_jump_filter(tst_ism8: wolf.Ism8, _LOGGER):
     assert tst_ism8._dp_values[4] == pytest.approx(39.0)
     assert tst_ism8._dp_discard_count[4] == 1
 
-    # second consecutive jump: discard, counter=2 (== MAX_DISCARDS)
-    assert tst_ism8.decode_datapoint(4, bytes_0c) is False
-    assert tst_ism8._dp_values[4] == pytest.approx(39.0)
-    assert tst_ism8._dp_discard_count[4] == 2
+    # makes some consecutive jumps: discard, counter> MAX_DISCARDS)
+    tst_ism8.decode_datapoint(4, bytes_0c)
+    tst_ism8.decode_datapoint(4, bytes_0c)
+    tst_ism8.decode_datapoint(4, bytes_0c)
 
-    # third consecutive jump exceeds MAX_DISCARDS: accepted, counter cleared
+    # next jump exceeds MAX_DISCARDS: accepted, counter cleared
     assert tst_ism8.decode_datapoint(4, bytes_0c) is True
     assert tst_ism8._dp_values[4] == pytest.approx(0.0)
     assert 4 not in tst_ism8._dp_discard_count

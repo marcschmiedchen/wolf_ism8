@@ -186,6 +186,8 @@ _DECODERS = {
     "DPT_DHWMode": lambda v: decode_dict(v, DHWModes),
     "DPT_Date": decode_date,
     "DPT_TimeOfDay": decode_time_of_day,
+    "DPT_Value_1_Ucount": decode_int,
+    "DPT_Value_2_Ucount": decode_int,
 }
 
 

@@ -2,6 +2,7 @@
 """
 Module for gathering info and sending commands from/to Wolf HVAC System via ISM8 adapter
 """
+
 import asyncio
 import logging
 
@@ -259,6 +260,9 @@ class Ism8(asyncio.Protocol):
             return False
         else:
             self._dp_values[dp_id] = value
+            # keepalive-only dps: store value but skip callback/no-callback log
+            if dp_id == 767:
+                return True
             if dp_id in self._callback_on_data:
                 self._callback_on_data[dp_id]()
             else:
@@ -333,4 +337,3 @@ class Ism8(asyncio.Protocol):
         Returns sensor value from private dictionary of sensor-readings
         """
         return self._dp_values.get(dp_id, None)
-

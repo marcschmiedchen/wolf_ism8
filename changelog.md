@@ -1,3 +1,7 @@
+## 4.1 (2026-10-10)
+### Added
+- added decoders for DPT_VALUE_1_UCOUNT and DPT_VALUE_2_UCOUNT
+
 ## 4.0 (2026-04-04)
 ### Fixed (Breaking Change!)
 - fixed spelling error in "get_remote_ip_address"
@@ -18,8 +22,8 @@
 
 ## 3.3.2 (2025-01-14)
 ### Added
-- Ignore datapoint if data length is zero 
-- Lib does not send ACK if data length is zero 
+- Ignore datapoint if data length is zero
+- Lib does not send ACK if data length is zero
 - moved unit-tests to pytest framework
 - added "known" undocumented datapoints 362,363,767
 ### Fixed
@@ -66,7 +70,7 @@
 - added support for TIME and DATE datapoints, read and write
 - added callback-functionality to realize push-integration in home assistant
 ### Fixed
-- one datapoint was missing. Fixed that. 
+- one datapoint was missing. Fixed that.
 
 ## 3.0 (2024-01-18)
 ### New
