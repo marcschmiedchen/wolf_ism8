@@ -256,17 +256,10 @@ class Ism8(asyncio.Protocol):
         value = decoder(int.from_bytes(raw_bytes, byteorder="big"))
         value = postprocess_data(self, dp_id, dp_type, value)
 
-        if value is None:
-            return False
-        else:
+        if value is not None:
             self._dp_values[dp_id] = value
-            # keepalive-only dps: store value but skip callback/no-callback log
-            if dp_id == 767:
-                return True
             if dp_id in self._callback_on_data:
                 self._callback_on_data[dp_id]()
-            else:
-                self.log.debug("no callback for dp.")
             return True
 
     def send_dp_value(self, dp_id: int, value) -> bool:
