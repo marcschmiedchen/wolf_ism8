@@ -308,7 +308,7 @@ DATAPOINTS = {
     248: ("Waermepumpe4", "Status E-Heizung", "DPT_Switch", False),
     249: ("Waermepumpe4", "Anlagendruck", "DPT_Value_Pres", False),
     250: ("Waermepumpe4", "Leistungsaufnahme", "DPT_Power", False),
-    767: ("Systembedienmodul", "Keepalive_Ping", "DPT_Switch", False),
+    767: ("Systembedienmodul", "Keepalive_Ping", "DPT_Bool", False),
 }
 
 HVACModes = {
