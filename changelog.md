@@ -1,6 +1,12 @@
-## 4.1 (2026-10-10)
+## 4.2 (2026-10-10)
 ### Added
-- added decoders for DPT_VALUE_1_UCOUNT and DPT_VALUE_2_UCOUNT
+- added tests for DPT_VALUE_1_UCOUNT and DPT_VALUE_2_UCOUNT
+
+## 4.1 (2026-10-08)
+### Added
+- added decoders for DPT_VALUE_1_UCOUNT and DPT_VALUE_2_UCOUNT.
+### Fixed
+- Fixed broken test for jump filter.
 
 ## 4.0 (2026-04-04)
 ### Fixed (Breaking Change!)
