@@ -7,11 +7,13 @@ import logging
 from .ism8_constants import (
     DATAPOINTS,
     DATATYPES,
+    DP_BITFIELDS,
     DP_VALUES_ALLOWED,
     DT_PYTHONTYPE,
     IX_RW_FLAG,
     IX_TYPE,
     DHWModes,
+    HeatGenTypes,
     HVACContrModes,
     HVACModes,
     HVACModes_CWL,
@@ -30,6 +32,23 @@ def decode_dict(mode_number: int, mode_dic: dict) -> str | None:
     if res is None:
         log.warning(f"mode number {mode_number} not implemented:")
     return res
+
+
+def decode_bitfield(dp_id: int, value) -> tuple[str, ...]:
+    """returns the names of the components flagged present in a bitfield datapoint
+
+    The BM-2 reports which appliances and which heating / hot water circuits exist
+    as a bit per component (manual sections 8.7.6 - 8.7.8). Bits Wolf documents as
+    "Nicht relevant" have no entry in DP_BITFIELDS and are skipped. Returns an
+    empty tuple for datapoints that are not bitfields or for unusable values.
+    """
+    bits = DP_BITFIELDS.get(dp_id)
+    if bits is None:
+        return ()
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        log.debug(f"datapoint {dp_id} holds no decodable bitfield: {value}")
+        return ()
+    return tuple(name for bit, name in sorted(bits.items()) if value & (1 << bit))
 
 
 def encode_dict(mode: str, mode_dic: dict) -> bytearray | None:
@@ -188,6 +207,7 @@ _DECODERS = {
     "DPT_TimeOfDay": decode_time_of_day,
     "DPT_Value_1_Ucount": decode_int,
     "DPT_Value_2_Ucount": decode_int,
+    "DPT_HeatGenType": lambda v: decode_dict(v, HeatGenTypes),
 }
 
 

@@ -9,6 +9,7 @@ import logging
 from .ism8_constants import (
     DATAPOINTS,
     DATATYPES,
+    DP_BITFIELDS,
     DP_VALUES_ALLOWED,
     DT_UNIT,
     ISM_ACK_DP_MSG,
@@ -24,6 +25,7 @@ from .ism8_constants import (
 from .ism8_helper_functions import (
     _DECODERS,
     _ENCODERS,
+    decode_bitfield,
     decode_int,
     postprocess_data,
     validate_dp_range,
@@ -69,6 +71,20 @@ class Ism8(asyncio.Protocol):
     def get_value_range(dp_id: int):
         """returns allowed values for write operations"""
         return DP_VALUES_ALLOWED.get(dp_id, ())
+
+    @staticmethod
+    def decode_bitfield(dp_id: int, value) -> tuple[str, ...]:
+        """returns the components a BM-2 bitfield datapoint reports as present.
+
+        Empty tuple for datapoints that do not carry a bitfield, so callers can
+        offer the decoded names on every datapoint without checking the id first.
+        """
+        return decode_bitfield(dp_id, value)
+
+    @staticmethod
+    def is_bitfield(dp_id: int) -> bool:
+        """returns whether this datapoint encodes presence of components per bit"""
+        return dp_id in DP_BITFIELDS
 
     @staticmethod
     def get_all_sensors() -> dict:
@@ -256,11 +272,13 @@ class Ism8(asyncio.Protocol):
         value = decoder(int.from_bytes(raw_bytes, byteorder="big"))
         value = postprocess_data(self, dp_id, dp_type, value)
 
-        if value is not None:
-            self._dp_values[dp_id] = value
-            if dp_id in self._callback_on_data:
-                self._callback_on_data[dp_id]()
-            return True
+        if value is None:
+            return False
+
+        self._dp_values[dp_id] = value
+        if dp_id in self._callback_on_data:
+            self._callback_on_data[dp_id]()
+        return True
 
     def send_dp_value(self, dp_id: int, value) -> bool:
         """

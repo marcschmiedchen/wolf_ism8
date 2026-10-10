@@ -327,6 +327,84 @@ async def test_post_processing(tst_ism8: wolf.Ism8, _LOGGER, caplog):
     assert tst_ism8._dp_values[166] == 140
 
 
+def test_heat_generator_type(tst_ism8: wolf.Ism8, _LOGGER):
+    """
+    checks decoding of the BM-2 appliance type datapoints (manual 8.7.9).
+    IDs 357/359/360/361 carry one appliance code each, not a bitfield.
+    """
+    _LOGGER.debug("decoding appliance types")
+    for dp_id in (357, 359, 360, 361):
+        assert tst_ism8.get_type(dp_id) == "DPT_HeatGenType"
+        assert tst_ism8.is_bitfield(dp_id) is False
+
+    # DPT_HeatGenType is decoded by the library, so a raw 6 arrives as "CHA"
+    _LOGGER.debug("trying to decode HeatGenType network msg")
+    test_bytes = bytes.fromhex(
+        "06:20:f0:80:00:15:04:00:00:00:f0:06:01:65:00:01:01:65:03:01:06".replace(
+            ":", ""
+        )
+    )
+    assert tst_ism8.data_received(test_bytes) is True
+    assert 357 in tst_ism8._dp_values.keys()
+    assert tst_ism8._dp_values[357] == "CHA"
+
+    # Wolf maps pairs of codes onto one appliance, and leaves 15 undefined
+    assert tst_ism8.get_value_range(357).count("CGB-2 38/55") == 1
+    assert "Kein Heizgeraet" in tst_ism8.get_value_range(361)
+
+
+def test_bitfield_decoding(tst_ism8: wolf.Ism8, _LOGGER):
+    """
+    checks decoding of the BM-2 presence bitfields (manual 8.7.6 - 8.7.8)
+    """
+    _LOGGER.debug("decoding presence bitfields")
+    for dp_id in (251, 355, 356, 358):
+        assert tst_ism8.is_bitfield(dp_id) is True
+    # 351 is not transmitted by the ISM8, see note in DATAPOINTS
+    assert tst_ism8.is_bitfield(351) is False
+
+    # a 2-byte bitfield arriving over the wire stays numeric in _dp_values ...
+    _LOGGER.debug("trying to decode bitfield network msg")
+    test_bytes = bytes.fromhex(
+        "06:20:f0:80:00:16:04:00:00:00:f0:06:01:63:00:01:01:63:03:02:21:02".replace(
+            ":", ""
+        )
+    )
+    assert tst_ism8.data_received(test_bytes) is True
+    assert tst_ism8._dp_values[355] == 0x2102
+    # ... and is turned into component names on demand
+    # ID 355 bit 8 = Heizgeraet 1, bit 1 = Mischermodul 1, bit 13 = Solarmodul
+    assert tst_ism8.decode_bitfield(355, 0x2102) == (
+        "Mischermodul 1",
+        "Heizgeraet 1",
+        "Solarmodul",
+    )
+    # bits Wolf documents as "Nicht relevant" are skipped
+    assert tst_ism8.decode_bitfield(355, 0x0001) == ()
+    assert tst_ism8.decode_bitfield(356, 0x0840) == ("CWL Excellent", "BM-2 / System")
+    # circuits: ID 251 counts heating circuits, ID 358 hot water circuits
+    assert tst_ism8.decode_bitfield(251, 0b0000_0011) == (
+        "Dir. Heizkreis",
+        "Mischerkreis 1",
+    )
+    assert tst_ism8.decode_bitfield(358, 0b0000_0011) == (
+        "Dir. Warmwasser",
+        "Warmwasser 1",
+    )
+
+    # values read off an ISM8i FW1.90 with BM-2 and a single TOB appliance
+    assert tst_ism8.decode_bitfield(355, 16640) == ("Heizgeraet 1",)
+    assert tst_ism8.decode_bitfield(356, 0) == ()
+    assert tst_ism8.decode_bitfield(251, 1) == ("Dir. Heizkreis",)
+    assert tst_ism8.decode_bitfield(358, 1) == ("Dir. Warmwasser",)
+
+    # datapoints that are not bitfields, and unusable values, decode to nothing
+    assert tst_ism8.decode_bitfield(372, 42) == ()
+    assert tst_ism8.decode_bitfield(351, 1) == ()
+    assert tst_ism8.decode_bitfield(355, None) == ()
+    assert tst_ism8.decode_bitfield(355, -1) == ()
+
+
 @pytest.fixture(scope="module")
 def tst_ism8():
     return wolf.Ism8()

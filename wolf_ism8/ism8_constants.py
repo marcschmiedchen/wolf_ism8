@@ -231,6 +231,10 @@ DATAPOINTS = {
     209: ("Kaskadenmodul", "Gesamtmodulationsgradvorgabe", "DPT_Scaling", True),
     210: ("Kaskadenmodul", "Sammlertemperaturvorgabe", "DPT_Value_Temp", True),
     211: ("Kaskadenmodul", "Betriebsart Heizen/Kuehlen", "DPT_Switch", False),
+    # the manual contradicts itself here: the firmware note on p.22 lists ID 251,
+    # the datapoint table on p.28 lists ID 351 for the same BM-2 datapoint. Verified
+    # on an ISM8i FW1.90 with BM-2: 251 is transmitted, 351 is not. The note is
+    # right, the table has the typo, so 351 stays in the undocumented block.
     251: ("Bedienmodul_BM2", "Erkennung HK_MK", "DPT_Value_1_Ucount", False),
     336: ("undok_Daten", "undokumentiert_336", "DPT_unknown", False),
     337: ("undok_Daten", "undokumentiert_337", "DPT_unknown", False),
@@ -255,11 +259,11 @@ DATAPOINTS = {
     363: ("undok_Daten", "undokumentiert_363", "DPT_unknown", False),
     355: ("Bedienmodul_BM2", "Erkennung_Geraete_1", "DPT_Value_2_Ucount", False),
     356: ("Bedienmodul_BM2", "Erkennung_Geraete_2", "DPT_Value_2_Ucount", False),
-    357: ("Bedienmodul_BM2", "Unterscheidung_Typ_HG1", "DPT_Value_1_Ucount", False),
+    357: ("Bedienmodul_BM2", "Unterscheidung_Typ_HG1", "DPT_HeatGenType", False),
     358: ("Bedienmodul_BM2", "Erkennung_WW_Kreise", "DPT_Value_1_Ucount", False),
-    359: ("Bedienmodul_BM2", "Unterscheidung_Typ_HG2", "DPT_Value_1_Ucount", False),
-    360: ("Bedienmodul_BM2", "Unterscheidung_Typ_HG3", "DPT_Value_1_Ucount", False),
-    361: ("Bedienmodul_BM2", "Unterscheidung_Typ_HG4", "DPT_Value_1_Ucount", False),
+    359: ("Bedienmodul_BM2", "Unterscheidung_Typ_HG2", "DPT_HeatGenType", False),
+    360: ("Bedienmodul_BM2", "Unterscheidung_Typ_HG3", "DPT_HeatGenType", False),
+    361: ("Bedienmodul_BM2", "Unterscheidung_Typ_HG4", "DPT_HeatGenType", False),
     364: ("Heizgeraet1", "Kesselsolltemperatur", "DPT_Value_Temp", False),
     365: ("Heizgeraet2", "Kesselsolltemperatur", "DPT_Value_Temp", False),
     366: ("Heizgeraet3", "Kesselsolltemperatur", "DPT_Value_Temp", False),
@@ -360,6 +364,81 @@ DHWModes = {
     4: "Standby",
 }
 
+HeatGenTypes = {
+    0: "Kein Heizgeraet",
+    1: "CGB-2",
+    2: "MGK-2",
+    3: "TOB",
+    4: "BWL-1S",
+    5: "FGB",
+    6: "CHA",
+    7: "COB-2",
+    8: "CGB-2 38/55",
+    9: "CGB-2 38/55",
+    10: "TGB-2",
+    11: "TGB-2",
+    12: "CGB-2 75/100",
+    13: "CGB-2 75/100",
+    14: "FHA",
+}
+# manual section 8.7.9 "Erkennung Heizgeraete-Typen", for IDs 357/359/360/361.
+# Wolf lists 8+9, 10+11 and 12+13 as pairs mapping to one appliance each.
+
+DP_BITFIELDS = {
+    # manual section 8.7.7 -- despite its heading, that table holds the heating
+    # circuits, and 8.7.6 holds the hot water circuits. The headings of 8.7.6 and
+    # 8.7.7 are swapped; the mapping below follows the datapoint names on p.28.
+    # Not yet confirmed against hardware: it takes an installation with differing
+    # numbers of heating and hot water circuits to tell the two readings apart.
+    251: {
+        0: "Dir. Heizkreis",
+        1: "Mischerkreis 1",
+        2: "Mischerkreis 2",
+        3: "Mischerkreis 3",
+        4: "Mischerkreis 4",
+        5: "Mischerkreis 5",
+        6: "Mischerkreis 6",
+        7: "Mischerkreis 7",
+    },
+    # manual section 8.7.6, see note above
+    358: {
+        0: "Dir. Warmwasser",
+        1: "Warmwasser 1",
+        2: "Warmwasser 2",
+        3: "Warmwasser 3",
+        4: "Warmwasser 4",
+        5: "Warmwasser 5",
+        6: "Warmwasser 6",
+        7: "Warmwasser 7",
+    },
+    # manual section 8.7.8 "Erkennung verfuegbarer Geraete". Bits left out here are
+    # documented as "Nicht relevant". Wolf leaves bits 4-7 of ID 355 unnumbered;
+    # they are read as Mischermodul 4-7 in line with bits 1-3.
+    # Observed on a TOB installation: ID 355 reads 0x4100, so bit 14 is set even
+    # though the manual calls it "Nicht relevant". Its meaning is unknown.
+    355: {
+        1: "Mischermodul 1",
+        2: "Mischermodul 2",
+        3: "Mischermodul 3",
+        4: "Mischermodul 4",
+        5: "Mischermodul 5",
+        6: "Mischermodul 6",
+        7: "Mischermodul 7",
+        8: "Heizgeraet 1",
+        9: "Heizgeraet 2",
+        10: "Heizgeraet 3",
+        11: "Heizgeraet 4",
+        12: "Heizgeraet 5",
+        13: "Solarmodul",
+    },
+    356: {
+        6: "CWL Excellent",
+        9: "Solarmodul 1",
+        10: "Solarmodul 2",
+        11: "BM-2 / System",
+    },
+}
+
 DP_VALUES_ALLOWED = {
     2: tuple(HVACContrModes.values()),
     15: tuple(HVACContrModes.values()),
@@ -440,6 +519,13 @@ DP_VALUES_ALLOWED = {
     213: tuple(HVACContrModes.values()),
     226: tuple(HVACContrModes.values()),
     239: tuple(HVACContrModes.values()),
+    # read-only enums, listed so consumers can offer a fixed set of states --
+    # same purpose the HVACContrMode entries above serve. dict.fromkeys() drops
+    # the duplicates Wolf's appliance-type table contains while keeping the order.
+    357: tuple(dict.fromkeys(HeatGenTypes.values())),
+    359: tuple(dict.fromkeys(HeatGenTypes.values())),
+    360: tuple(dict.fromkeys(HeatGenTypes.values())),
+    361: tuple(dict.fromkeys(HeatGenTypes.values())),
 }
 
 # index into DATATYPE DICTIONARY
@@ -479,4 +565,5 @@ DATATYPES = {
     "DPT_HVACMode_CWL": (0, 4, str, 1, None, 1),
     "DPT_DHWMode": (0, 4, str, 1, None, 1),
     "DPT_HVACContrMode": (0, 20, str, 1, None, 1),
+    "DPT_HeatGenType": (0, 14, str, 1, None, 1),
 }
