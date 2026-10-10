@@ -1,3 +1,16 @@
+## 4.3 (2026-10-10)
+### Added
+- decode the BM-2 appliance type datapoints (IDs 357/359/360/361) via the new
+  type `DPT_HeatGenType`, so they read as "CHA" / "CGB-2" instead of a number
+- `Ism8.decode_bitfield()` / `Ism8.is_bitfield()` resolve the BM-2 presence
+  bitfields (IDs 251/355/356/358) into component names
+- verified against an ISM8i FW1.90 with BM-2 that datapoint 251 is the one the
+  module transmits for "Erkennung verfuegbare Heiz-/Mischerkreise"; the manual
+  names 251 on p.22 and 351 on p.28, and 351 is never sent
+### Fixed
+- `decode_datapoint()` returns False again when a value is discarded; it had
+  returned None since 4.2, which left test_jump_filter failing
+
 ## 4.2 (2026-10-10)
 ### Added
 - added tests for DPT_VALUE_1_UCOUNT and DPT_VALUE_2_UCOUNT
