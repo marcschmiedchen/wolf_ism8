@@ -326,6 +326,35 @@ async def test_jump_filter(tst_ism8: wolf.Ism8, _LOGGER):
 
 
 @pytest.mark.asyncio
+async def test_jump_filter_setpoints(tst_ism8: wolf.Ism8, _LOGGER):
+    """
+    364: ('Heizgeraet1', 'Kesselsolltemperatur', 'DPT_Value_Temp', False)
+    Setpoints legitimately jump (standby 5°C -> demand 60°C) and are exempt from
+    the jump filter; only implausible values outside SETPOINT_RANGE are dropped.
+    """
+    bytes_5c = bytearray(b"\x01\xf4")  # 5.0°C
+    bytes_60c = bytearray(b"\x15\xdc")  # 60.0°C
+    bytes_garbage = bytearray(b"\xa2\xab")  # -218.4°C, seen in the wild
+
+    tst_ism8._dp_discard_count.pop(364, None)
+    assert tst_ism8.decode_datapoint(364, bytes_5c) is True
+    assert tst_ism8._dp_values[364] == pytest.approx(5.0)
+
+    # jump of 55°C is accepted immediately, no discard counting
+    assert tst_ism8.decode_datapoint(364, bytes_60c) is True
+    assert tst_ism8._dp_values[364] == pytest.approx(60.0)
+    assert 364 not in tst_ism8._dp_discard_count
+
+    # and back
+    assert tst_ism8.decode_datapoint(364, bytes_5c) is True
+    assert tst_ism8._dp_values[364] == pytest.approx(5.0)
+
+    # garbage outside the plausible range is dropped, cache untouched
+    assert tst_ism8.decode_datapoint(364, bytes_garbage) is False
+    assert tst_ism8._dp_values[364] == pytest.approx(5.0)
+
+
+@pytest.mark.asyncio
 async def test_post_processing(tst_ism8: wolf.Ism8, _LOGGER, caplog):
     # decoding tests
     caplog.set_level(logging.DEBUG)
