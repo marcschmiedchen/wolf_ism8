@@ -1,3 +1,14 @@
+## 4.4 (2026-11-03)
+### Added
+- inactivity watchdog: `connection_made()` and `data_received()` (re)arm a timer,
+  and after `watchdog_timeout` seconds (default 90, `Ism8(watchdog_timeout=...)`)
+  without incoming data the transport is aborted. Catches an ISM8 that loses power.
+- `Ism8.register_disconnect_callback()`, called on every `connection_lost()`
+  including a watchdog expiry
+### Fixed
+- `connection_lost()` now clears `_transport`, so a write after a disconnect is
+  rejected instead of going to a dead socket
+
 ## 4.3 (2026-10-10)
 ### Added
 - decode the BM-2 appliance type datapoints (IDs 357/359/360/361) via the new

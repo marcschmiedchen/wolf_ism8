@@ -113,7 +113,7 @@ class Ism8(asyncio.Protocol):
             case _:
                 return "1.00"
 
-    def __init__(self):
+    def __init__(self, watchdog_timeout: float = 90):
         # the datapoint-values from the device are stored and buffered here
         self._dp_values = {}
         self._dp_discard_count = {}
@@ -125,6 +125,12 @@ class Ism8(asyncio.Protocol):
         self._callback_on_data = {}
         # its possible to register a callback once the connection is established
         self._callback_on_connection = None
+        # called when the connection is lost (either by ISM8 or by the watchdog)
+        self._callback_on_disconnect = None
+        # no loop is touched here: the protocol may be instantiated outside a
+        # running loop (e.g. at module level in tests)
+        self._watchdog_timeout = watchdog_timeout
+        self._watchdog_handle = None
 
     def factory(self):
         """factory method for asyncio"""
@@ -149,6 +155,7 @@ class Ism8(asyncio.Protocol):
         self._connected = True
         self._remote_ip_address = transport.get_extra_info("peername")[0]
         self.log.info("Connection from ISM8: %s", self._remote_ip_address)
+        self._restart_watchdog()
         if self._callback_on_connection is not None:
             self._callback_on_connection(self._remote_ip_address)
 
@@ -158,8 +165,53 @@ class Ism8(asyncio.Protocol):
         """
         self.log.debug("ISM8 closed the connection. Stopping")
         self._connected = False
+        self._stop_watchdog()
         if self._transport:
             self._transport.close()
+            self._transport = None
+        if self._callback_on_disconnect is not None:
+            self._callback_on_disconnect()
+
+    def _restart_watchdog(self) -> None:
+        """
+        (re)arms the inactivity watchdog. Called whenever data is received or a
+        connection is established.
+        """
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # no loop: data_received() was called synchronously, e.g. from a test.
+            # Such a call cannot belong to a live connection, so there is nothing
+            # to guard: skip instead of raising.
+            return
+        self._stop_watchdog()
+        self._watchdog_handle = loop.call_later(
+            self._watchdog_timeout, self._on_watchdog_expired
+        )
+
+    def _stop_watchdog(self) -> None:
+        """cancels a pending watchdog, if any"""
+        if self._watchdog_handle is not None:
+            self._watchdog_handle.cancel()
+            self._watchdog_handle = None
+
+    def _on_watchdog_expired(self) -> None:
+        """
+        No data received for watchdog_timeout seconds => Abort the transport
+        Asyncio then calls connection_lost()"""
+        self._watchdog_handle = None
+        self.log.info(
+            "No data from ISM8 (%s) for %ss. Assuming connection lost.",
+            self._remote_ip_address,
+            self._watchdog_timeout,
+        )
+        if self._transport is not None:
+            self._transport.abort()
+        else:
+            # transport vanished already - keep internal state consistent
+            self._connected = False
+            if self._callback_on_disconnect is not None:
+                self._callback_on_disconnect()
 
     def register_callback(self, cb, dp_nbr):
         """registers a callback for a datapoint; is called when data is received"""
@@ -175,6 +227,11 @@ class Ism8(asyncio.Protocol):
         if self._connected:
             self._callback_on_connection(self._remote_ip_address)
 
+    def register_disconnect_callback(self, cb):
+        """registers a callback for a lost connection; is called on connection_lost,
+        which includes a watchdog expiry (see _on_watchdog_expired)"""
+        self._callback_on_disconnect = cb
+
     def connected(self):
         """returns connection status"""
         return self._connected
@@ -183,6 +240,9 @@ class Ism8(asyncio.Protocol):
         """is called whenever data is ready. Conducts buffering, slices the messages
         and extracts the payload for further processing. Returns false if ISM8 data
         could not be processed"""
+        # any byte from the ISM8 proves the socket is still alive, even an
+        # unparsable chunk: feed the watchdog before doing anything else
+        self._restart_watchdog()
         self.log.debug(f"data received from ISM: {data.hex(':')}")
         frame_size = 0
         # find first header location
