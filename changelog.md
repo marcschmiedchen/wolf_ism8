@@ -5,6 +5,12 @@
   without incoming data the transport is aborted. Catches an ISM8 that loses power.
 - `Ism8.register_disconnect_callback()`, called on every `connection_lost()`
   including a watchdog expiry
+- `Ism8.close()`: detaches all callbacks and closes the transport, for callers
+  tearing the protocol down. Idempotent.
+### Changed (Breaking)
+- `Ism8.factory()` is gone; the instance is now its own factory, so pass `ism8`
+  itself where `ism8.factory` was passed. A connection arriving while a socket is
+  already attached is rejected instead of overwriting the live transport.
 ### Fixed
 - `connection_lost()` now clears `_transport`, so a write after a disconnect is
   rejected instead of going to a dead socket

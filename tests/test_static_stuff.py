@@ -11,14 +11,25 @@ from wolf_ism8.ism8_helper_functions import encode_scaling, validate_dp_range
 @pytest.mark.asyncio
 async def test_async_setup_server(tst_ism8: wolf.Ism8, _LOGGER):
     _eventloop = asyncio.get_running_loop()
-    task1 = _eventloop.create_task(
-        _eventloop.create_server(tst_ism8.factory, port=12004)
-    )
+    task1 = _eventloop.create_task(_eventloop.create_server(tst_ism8, port=12004))
     _LOGGER.debug("Setup Server")
     _server = await task1
     _LOGGER.debug(f"Waiting for ISM8 connection on {_server.sockets[0].getsockname()}")
     assert _server is not None
     return _server
+
+
+@pytest.mark.asyncio
+async def test_second_connection_rejected(_LOGGER):
+    """
+    the instance is its own protocol factory, but only hands itself out while no
+    socket is attached: a second connection must not steal the live transport.
+    Uses a fresh instance because the module-scoped fixture is shared.
+    """
+    ism8 = wolf.Ism8()
+    assert ism8() is ism8
+    ism8._transport = object()  # pretend a client is attached
+    assert ism8() is not ism8
 
 
 @pytest.mark.asyncio
@@ -430,6 +441,43 @@ def test_heating_circuit_blocks(tst_ism8: wolf.Ism8, _LOGGER):
     # the ids between the blocks are not assigned by Wolf
     for dp_id in (67, 80, 93):
         assert dp_id not in datapoints
+
+
+def test_watchdog_expiry_without_transport_notifies():
+    """A watchdog expiry with no transport left cannot rely on asyncio calling
+    connection_lost(), so it must notify the same way that path does."""
+    ism8 = wolf.Ism8()
+    fired = []
+    ism8.register_disconnect_callback(lambda: fired.append("lost"))
+    ism8.register_callback(lambda: fired.append("dp"), 4)
+    assert ism8._transport is None
+
+    ism8._on_watchdog_expired()
+
+    # both the datapoint callbacks and the disconnect callback must fire
+    assert fired == ["dp", "lost"]
+    assert ism8.connected() is False
+
+
+def test_close_detaches_callbacks():
+    """close() must leave nothing for connection_lost() to fire."""
+    ism8 = wolf.Ism8()
+    fired = []
+    ism8.register_connection_callback(lambda ip: fired.append(ip))
+    ism8.register_disconnect_callback(lambda: fired.append("lost"))
+    ism8.register_callback(lambda: fired.append("dp"), 4)
+    ism8._transport = object()  # pretend a client is attached
+
+    ism8.close()
+
+    assert ism8._callback_on_connection is None
+    assert ism8._callback_on_disconnect is None
+    assert ism8._callback_on_data == {}
+    assert ism8._transport is None
+    assert ism8.connected() is False
+    # idempotent
+    ism8.close()
+    assert fired == []
 
 
 @pytest.fixture(scope="module")

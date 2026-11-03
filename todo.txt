@@ -1,0 +1,16 @@
+bugs:
+- connection_lost() and the watchdog's expiry branch disagree about what a lost
+  connection does. connection_lost() (ism8.py:169) fires every datapoint
+  callback and then the disconnect callback; _on_watchdog_expired's else branch
+  (ism8.py:221, transport already gone) fires only the disconnect callback, so
+  entities are not told to go stale on that path. Do the same thing in both.
+
+notes:
+- Ism8 is its own protocol factory (__call__, ism8.py:138): it hands out `self`
+  while no socket is attached and a throwaway _RejectConnection when one is.
+  Deliberate singleton -- the integration holds exactly one instance and every
+  entity reads from it. A second TCP client is rejected rather than allowed to
+  overwrite the live transport.
+- MAX_DISCARDS = 2: a jumped reading is discarded and cached; after two
+  consecutive discards the next value is accepted regardless (see
+  tests/test_static_stuff.py::test_jump_filter).
