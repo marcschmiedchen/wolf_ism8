@@ -100,7 +100,7 @@ class Ism8(asyncio.Protocol):
     def first_fw_version(dp_id: int) -> str:
         """returns first ISM8-firmware version of datapoint implementation"""
         match dp_id:
-            case _ if 191 < dp_id < 208:
+            case _ if 191 < dp_id < 209:
                 return "1.50"
             case 209 | 210 | 211 | 251:
                 return "1.70"

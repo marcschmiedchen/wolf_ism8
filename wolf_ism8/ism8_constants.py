@@ -102,6 +102,7 @@ DATAPOINTS = {
     77: ("Mischerkreis1", "Warmwasser Zeitprogramm 3", "DPT_Switch", True),
     78: ("Mischerkreis1", "Sollwertkorrektur", "DPT_Tempd", True),
     79: ("Mischerkreis1", "Sparfaktor", "DPT_Tempd", True),
+    81: ("Mischerkreis2", "Raumtemperatur", "DPT_Value_Temp", False),
     82: ("Mischerkreis2", "Warmwassersolltemperatur", "DPT_Value_Temp", True),
     83: ("Mischerkreis2", "Programmwahl Mischer", "DPT_HVACMode", True),
     84: ("Mischerkreis2", "Programmwahl Warmwasser", "DPT_DHWMode", True),

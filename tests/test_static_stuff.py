@@ -405,6 +405,33 @@ def test_bitfield_decoding(tst_ism8: wolf.Ism8, _LOGGER):
     assert tst_ism8.decode_bitfield(355, -1) == ()
 
 
+def test_heating_circuit_blocks(tst_ism8: wolf.Ism8, _LOGGER):
+    """
+    the four heating circuits occupy twelve consecutive ids each, separated by
+    one unused id (manual 8.3). A skipped line in DATAPOINTS is invisible from
+    the id alone, so the shape is asserted here.
+    """
+    _LOGGER.debug("checking heating circuit block layout")
+    datapoints = tst_ism8.get_all_sensors()
+    for start, device in (
+        (55, "Direkter_Heizkreis_WW"),
+        (68, "Mischerkreis1"),
+        (81, "Mischerkreis2"),
+        (94, "Mischerkreis3"),
+    ):
+        missing = [dp for dp in range(start, start + 12) if dp not in datapoints]
+        assert not missing, f"{device} is missing datapoints {missing}"
+        # every block opens with the room temperature reported by the controller
+        assert tst_ism8.get_name(start) == "Raumtemperatur"
+        assert tst_ism8.get_type(start) == "DPT_Value_Temp"
+        assert tst_ism8.is_writable(start) is False
+        assert tst_ism8.get_device(start) == device
+
+    # the ids between the blocks are not assigned by Wolf
+    for dp_id in (67, 80, 93):
+        assert dp_id not in datapoints
+
+
 @pytest.fixture(scope="module")
 def tst_ism8():
     return wolf.Ism8()
