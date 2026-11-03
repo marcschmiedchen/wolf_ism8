@@ -10,6 +10,7 @@ from .ism8_constants import (
     DP_BITFIELDS,
     DP_VALUES_ALLOWED,
     DT_PYTHONTYPE,
+    IX_NAME,
     IX_RW_FLAG,
     IX_TYPE,
     DHWModes,
@@ -24,6 +25,14 @@ log = logging.getLogger(__name__)
 MAX_DISCARDS = 1
 JUMP_FILTER_DELTA = 20
 _JUMP_FILTER_TYPES = frozenset(("DPT_Value_Temp", "DPT_Value_Tempd", "DPT_Tempd"))
+# setpoints legitimately jump (e.g. 5°C in standby -> 58°C on demand), so the
+# jump filter only applies to measured temperatures
+_JUMP_FILTER_EXEMPT = frozenset(
+    dp_id
+    for dp_id, props in DATAPOINTS.items()
+    if props[IX_TYPE] in _JUMP_FILTER_TYPES
+    and any(key in props[IX_NAME].lower() for key in ("soll", "vorgabe"))
+)
 
 
 def decode_dict(mode_number: int, mode_dic: dict) -> str | None:
@@ -254,7 +263,11 @@ def postprocess_data(self, dp_id, dp_type, value):
     # jump filter: discard temperature values that jump more than JUMP_FILTER_DELTA.
     # after MAX_DISCARDS consecutive discards, accept unconditionally (cache reset).
     cached = self._dp_values.get(dp_id)
-    if dp_type in _JUMP_FILTER_TYPES and cached is not None:
+    if (
+        dp_type in _JUMP_FILTER_TYPES
+        and dp_id not in _JUMP_FILTER_EXEMPT
+        and cached is not None
+    ):
         if abs(value - cached) > JUMP_FILTER_DELTA:
             count = self._dp_discard_count.get(dp_id, 0) + 1
             if count <= MAX_DISCARDS:
