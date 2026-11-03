@@ -1,4 +1,4 @@
-## 4.4 (2026-11-03)
+## 5.0 (2026-11-03)
 ### Added
 - inactivity watchdog: `connection_made()` and `data_received()` (re)arm a timer,
   and after `watchdog_timeout` seconds (default 90, `Ism8(watchdog_timeout=...)`)
