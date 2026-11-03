@@ -74,11 +74,7 @@ class Ism8(asyncio.Protocol):
 
     @staticmethod
     def decode_bitfield(dp_id: int, value) -> tuple[str, ...]:
-        """returns the components a BM-2 bitfield datapoint reports as present.
-
-        Empty tuple for datapoints that do not carry a bitfield, so callers can
-        offer the decoded names on every datapoint without checking the id first.
-        """
+        """returns the components a BM-2 bitfield datapoint reports as present."""
         return decode_bitfield(dp_id, value)
 
     @staticmethod
@@ -169,6 +165,10 @@ class Ism8(asyncio.Protocol):
         if self._transport:
             self._transport.close()
             self._transport = None
+        # fire every datapoint callback one last time so receivers can mark the
+        # values as stale/unavailable now that the ISM8 is gone
+        for cb in self._callback_on_data.values():
+            cb()
         if self._callback_on_disconnect is not None:
             self._callback_on_disconnect()
 

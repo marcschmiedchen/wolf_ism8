@@ -36,10 +36,8 @@ def decode_dict(mode_number: int, mode_dic: dict) -> str | None:
 
 def decode_bitfield(dp_id: int, value) -> tuple[str, ...]:
     """returns the names of the components flagged present in a bitfield datapoint
-
     The BM-2 reports which appliances and which heating / hot water circuits exist
-    as a bit per component (manual sections 8.7.6 - 8.7.8). Bits Wolf documents as
-    "Nicht relevant" have no entry in DP_BITFIELDS and are skipped. Returns an
+    as a bit per component (manual sections 8.7.6 - 8.7.8). Returns an
     empty tuple for datapoints that are not bitfields or for unusable values.
     """
     bits = DP_BITFIELDS.get(dp_id)

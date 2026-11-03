@@ -116,6 +116,23 @@ async def test_watchdog_reset_by_data(_LOGGER):
     assert ism8._watchdog_handle is None
 
 
+def test_datapoint_callbacks_fire_on_disconnect(_LOGGER):
+    """
+    Losing the ISM8 must notify every registered datapoint callback once more,
+    so receivers can mark the cached values as unavailable.
+    """
+    ism8 = wolf.Ism8()
+    fired = []
+    ism8.register_callback(lambda: fired.append(1), 57)
+    ism8.register_callback(lambda: fired.append(2), 58)
+    ism8.register_callback(lambda: fired.append(3), 59)
+    ism8.remove_callback(59)
+
+    ism8.connection_lost(None)
+
+    assert sorted(fired) == [1, 2]
+
+
 @pytest.mark.asyncio
 async def test_watchdog_handle_cleared(_LOGGER):
     """watchdog handle is cleared after expiry AND after a manual disconnect"""
