@@ -152,3 +152,20 @@ async def test_watchdog_handle_cleared(_LOGGER):
     assert disconnects == [1]
     assert ism8._watchdog_handle is None
     assert ism8._transport is None
+
+
+@pytest.mark.asyncio
+async def test_watchdog_disabled(_LOGGER):
+    """watchdog_timeout=None arms no timer: a silent connection is not aborted"""
+    ism8 = wolf.Ism8(watchdog_timeout=None)
+    transport = _StubTransport(ism8)
+    ism8.register_disconnect_callback(lambda: _LOGGER.error("must not fire"))
+
+    ism8.connection_made(transport)
+    assert ism8._watchdog_handle is None
+    assert ism8.data_received(_VALID_MSG) is True
+    await asyncio.sleep(0.2)
+
+    assert ism8._watchdog_handle is None
+    assert transport.aborted == 0
+    assert ism8.connected() is True

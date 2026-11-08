@@ -461,12 +461,18 @@ def test_watchdog_expiry_without_transport_notifies():
 
 def test_close_detaches_callbacks():
     """close() must leave nothing for connection_lost() to fire."""
+    closed = []
+
+    class _Transport:
+        def close(self):
+            closed.append(1)
+
     ism8 = wolf.Ism8()
     fired = []
     ism8.register_connection_callback(lambda ip: fired.append(ip))
     ism8.register_disconnect_callback(lambda: fired.append("lost"))
     ism8.register_callback(lambda: fired.append("dp"), 4)
-    ism8._transport = object()  # pretend a client is attached
+    ism8._transport = _Transport()  # pretend a client is attached
 
     ism8.close()
 
@@ -475,9 +481,11 @@ def test_close_detaches_callbacks():
     assert ism8._callback_on_data == {}
     assert ism8._transport is None
     assert ism8.connected() is False
+    assert closed == [1]
     # idempotent
     ism8.close()
     assert fired == []
+    assert closed == [1]
 
 
 @pytest.fixture(scope="module")
