@@ -77,7 +77,8 @@ async def test_watchdog_aborts_silent_connection(_LOGGER):
     Connection that goes silent (no TCP FIN, e.g. ISM8 power loss) must be
     aborted by the watchdog and reported as disconnected.
     """
-    ism8 = wolf.Ism8(watchdog_timeout=0.1)
+    ism8 = wolf.Ism8()
+    ism8.set_watchdog_timeout(0.1)
     transport = _StubTransport(ism8)
     disconnects = []
     ism8.register_disconnect_callback(lambda: disconnects.append(1))
@@ -98,7 +99,8 @@ async def test_watchdog_reset_by_data(_LOGGER):
     Incoming data must push the deadline out: a connection receiving data
     within the timeout is never aborted.
     """
-    ism8 = wolf.Ism8(watchdog_timeout=0.2)
+    ism8 = wolf.Ism8()
+    ism8.set_watchdog_timeout(0.2)
     transport = _StubTransport()
 
     ism8.connection_made(transport)
@@ -134,7 +136,8 @@ def test_datapoint_callbacks_fire_on_disconnect(_LOGGER):
 @pytest.mark.asyncio
 async def test_watchdog_handle_cleared(_LOGGER):
     """watchdog handle is cleared after expiry AND after a manual disconnect"""
-    ism8 = wolf.Ism8(watchdog_timeout=0.1)
+    ism8 = wolf.Ism8()
+    ism8.set_watchdog_timeout(0.1)
     transport = _StubTransport(ism8)
 
     ism8.connection_made(transport)
@@ -156,8 +159,8 @@ async def test_watchdog_handle_cleared(_LOGGER):
 
 @pytest.mark.asyncio
 async def test_watchdog_disabled(_LOGGER):
-    """watchdog_timeout=None arms no timer: a silent connection is not aborted"""
-    ism8 = wolf.Ism8(watchdog_timeout=None)
+    """no timeout set (or set to None) arms no timer: a silent connection survives"""
+    ism8 = wolf.Ism8()
     transport = _StubTransport(ism8)
     ism8.register_disconnect_callback(lambda: _LOGGER.error("must not fire"))
 
@@ -169,3 +172,48 @@ async def test_watchdog_disabled(_LOGGER):
     assert ism8._watchdog_handle is None
     assert transport.aborted == 0
     assert ism8.connected() is True
+
+
+@pytest.mark.asyncio
+async def test_set_watchdog_timeout_arms_live_connection(_LOGGER):
+    """
+    Setting a timeout on a live but already silent connection must arm the new
+    deadline at once, otherwise an idle device would never be detected.
+    """
+    ism8 = wolf.Ism8()
+    transport = _StubTransport(ism8)
+    ism8.connection_made(transport)
+    assert ism8._watchdog_handle is None
+
+    ism8.set_watchdog_timeout(0.1)
+    assert ism8._watchdog_timeout == 0.1
+    assert ism8._watchdog_handle is not None
+
+    await asyncio.sleep(0.2)
+
+    assert transport.aborted == 1
+    assert ism8.connected() is False
+
+
+@pytest.mark.asyncio
+async def test_set_watchdog_timeout_drops_pending_timer(_LOGGER):
+    """
+    The pending timer is cancelled, not left running: stretching the timeout
+    must not still abort at the old, shorter deadline. None disarms entirely.
+    """
+    ism8 = wolf.Ism8()
+    ism8.set_watchdog_timeout(0.05)
+    transport = _StubTransport(ism8)
+    ism8.connection_made(transport)
+
+    ism8.set_watchdog_timeout(1)
+    await asyncio.sleep(0.2)
+
+    assert transport.aborted == 0
+    assert ism8.connected() is True
+
+    ism8.set_watchdog_timeout(None)
+    assert ism8._watchdog_handle is None
+    await asyncio.sleep(0.2)
+
+    assert transport.aborted == 0

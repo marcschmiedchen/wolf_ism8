@@ -123,10 +123,8 @@ class Ism8(asyncio.Protocol):
             case _:
                 return "1.00"
 
-    def __init__(self, watchdog_timeout: float | None = 90):
-        """watchdog_timeout: seconds of silence before the connection is aborted,
-        or None to disable the watchdog entirely (e.g. old firmware that sends
-        no periodic data while idle)."""
+    def __init__(self):
+        """Init the class"""
         # the datapoint-values from the device are stored and buffered here
         self._dp_values = {}
         # consecutive jump-filter discards per datapoint (see postprocess_data)
@@ -139,7 +137,8 @@ class Ism8(asyncio.Protocol):
         self._callback_on_data = {}
         self._callback_on_connection = None
         self._callback_on_disconnect = None
-        self._watchdog_timeout = watchdog_timeout
+        # The inactivity watchdog starts disabled:
+        self._watchdog_timeout = None
         self._watchdog_handle = None
 
     def __call__(self):
@@ -158,6 +157,15 @@ class Ism8(asyncio.Protocol):
             self.log.error("No Connection to ISM8 Module")
         else:
             self._transport.write(req_msg)  # type: ignore
+
+    def set_watchdog_timeout(self, timeout: float | None) -> None:
+        """Change the inactivity timeout at runtime. A pending timer is dropped
+        and, on a live connection, re-armed right away - so an ISM8 that is
+        already silent is covered from this call onwards. None never arms."""
+        self._watchdog_timeout = timeout
+        self._stop_watchdog()
+        if self._connected:
+            self._restart_watchdog()
 
     def connection_made(self, transport) -> None:
         """is called as soon as an ISM8 connects to server"""

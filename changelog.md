@@ -1,8 +1,9 @@
 ## 5.0 (2026-11-03)
 ### Added
 - inactivity watchdog: `connection_made()` and `data_received()` (re)arm a timer,
-  and after `watchdog_timeout` seconds (default 90, `Ism8(watchdog_timeout=...)`)
+  and after `watchdog_timeout` seconds (set with `Ism8.set_watchdog_timeout(...)`)
   without incoming data the transport is aborted. Catches an ISM8 that loses power.
+  The watchdog starts disabled: `__init__` takes no timeout, `None` keeps it off.
 - `Ism8.register_disconnect_callback()`, called on every `connection_lost()`
   including a watchdog expiry
 - `Ism8.unregister_connection_callback()` and `Ism8.unregister_disconnect_callback()`,

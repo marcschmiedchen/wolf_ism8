@@ -11,6 +11,15 @@ connects, `register_disconnect_callback(cb)` on every disconnect: a dropped sock
 a watchdog expiry or `close()`. A reconnecting ISM8 simply replaces the previous
 socket — the connection callback fires again and cached values are kept.
 
+### Inactivity watchdog
+
+`Ism8()` starts with the watchdog off. `set_watchdog_timeout(seconds)` enables it:
+the connection is aborted after that many seconds without incoming data, so a
+power-lost ISM8 (which never sends a FIN) is detected. The timeout is stored, any
+pending timer is dropped and the timer is armed immediately when the connection is
+live — an already-silent device is covered from the call onwards. Call it again with
+`None` to switch the watchdog off.
+
 Nothing is ever unregistered for you. Datapoint and connection callbacks survive
 every disconnect, so call `remove_callback(dp_id)`,
 `unregister_connection_callback()` and `unregister_disconnect_callback()` in your

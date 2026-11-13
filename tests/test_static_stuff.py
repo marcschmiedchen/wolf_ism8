@@ -57,7 +57,7 @@ async def test_second_connection_replaces_transport(_LOGGER):
     dropped, and its connection_lost() must not tear down the new connection.
     Uses a fresh instance because the module-scoped fixture is shared.
     """
-    ism8 = wolf.Ism8(watchdog_timeout=None)
+    ism8 = wolf.Ism8()
     fired = []
     ism8.register_disconnect_callback(lambda: fired.append("lost"))
     ism8.register_callback(lambda: fired.append("dp"), 4)
@@ -525,7 +525,7 @@ def test_watchdog_expiry_without_transport_notifies():
 async def test_close_keeps_callbacks_until_unregistered(_LOGGER):
     """close() shuts the transport down but detaches nothing: the caller owns its
     callbacks, and unregistering them is what silences the disconnect fan-out."""
-    ism8 = wolf.Ism8(watchdog_timeout=None)
+    ism8 = wolf.Ism8()
     fired = []
     ism8.register_connection_callback(lambda ip: fired.append(ip))
     ism8.register_disconnect_callback(lambda: fired.append("lost"))
@@ -571,7 +571,7 @@ async def test_close_keeps_callbacks_until_unregistered(_LOGGER):
 def test_disconnect_callback_may_close():
     """A datapoint callback that tears the protocol down while connection_lost()
     iterates the registry must neither break that iteration nor re-enter it."""
-    ism8 = wolf.Ism8(watchdog_timeout=None)
+    ism8 = wolf.Ism8()
     calls = []
 
     def tear_down():
