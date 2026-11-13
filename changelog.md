@@ -5,21 +5,32 @@
   without incoming data the transport is aborted. Catches an ISM8 that loses power.
 - `Ism8.register_disconnect_callback()`, called on every `connection_lost()`
   including a watchdog expiry
-- `Ism8.close()`: detaches all callbacks and closes the transport, for callers
-  tearing the protocol down. Idempotent.
+- `Ism8.unregister_connection_callback()` and `Ism8.unregister_disconnect_callback()`,
+  so either connection callback can be dropped without re-registering a dummy
+- `Ism8.close()`: stops the watchdog, closes the transport and reports disconnected,
+  for callers tearing the protocol down. Idempotent.
 ### Changed (Breaking)
 - `Ism8.factory()` is gone; the instance is now its own factory, so pass `ism8`
-  itself where `ism8.factory` was passed. A connection arriving while a socket is
-  already attached is rejected instead of overwriting the live transport.
+  itself where `ism8.factory` was passed.
+- a reconnecting ISM8 now takes over the live socket instead of being rejected. The
+  previous transport is detached from the protocol before it is aborted, so its
+  deferred `connection_lost()` cannot tear down the connection that replaced it.
+  Cached values and all callbacks survive the swap, and no disconnect is reported:
+  the device is back, so entities are not flapped unavailable and back.
+- `Ism8.close()`
+  graceful exit
 ### Fixed
 - `connection_lost()` now clears `_transport`, so a write after a disconnect is
   rejected instead of going to a dead socket
+- `connection_lost()` iterates a snapshot of the datapoint callbacks, so a callback
+  that unregisters itself or calls `close()` no longer aborts the fan-out with
+  "dictionary changed size during iteration"
+- a watchdog expiry with no transport left now takes the same teardown path as a
+  real disconnect, instead of leaving `connected()` returning True forever
   - datapoint 81, "Raumtemperatur" of Mischerkreis2, was missing from DATAPOINTS;
   the manual lists it on p.24 and the three sibling circuits all have theirs
 - `first_fw_version()` reported 1.00 for datapoint 208, which the manual lists
-  under "IDs 192-208 are usable from FW1.50"; the bound was one short. Now that
-  the integration filters entities by firmware version this decides whether the
-  datapoint gets an entity at all
+  under "IDs 192-208 are usable from FW1.50"; the bound was one short.
 
 ## 4.3 (2026-10-10)
 ### Added

@@ -21,7 +21,7 @@ from .ism8_constants import (
 
 log = logging.getLogger(__name__)
 
-MAX_DISCARDS = 1
+MAX_DISCARDS = 2
 JUMP_FILTER_DELTA = 20
 _JUMP_FILTER_TYPES = frozenset(("DPT_Value_Temp", "DPT_Value_Tempd", "DPT_Tempd"))
 

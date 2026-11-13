@@ -19,17 +19,71 @@ async def test_async_setup_server(tst_ism8: wolf.Ism8, _LOGGER):
     return _server
 
 
+class _StubTransport:
+    """transport stand-in modelling asyncio's protocol handover: abort() reports
+    the connection as lost to whichever protocol is attached at that moment."""
+
+    def __init__(self, protocol=None):
+        # asyncio attaches the protocol when the transport is created, so the
+        # stub takes it up front; set_protocol() only ever replaces it later
+        self.protocol = protocol
+        self.aborted = 0
+        self.closed = 0
+        self.written = []
+
+    def get_extra_info(self, name):
+        return ("127.0.0.1", 12004)
+
+    def set_protocol(self, protocol):
+        self.protocol = protocol
+
+    def abort(self):
+        self.aborted += 1
+        self.protocol.connection_lost(None)
+
+    def close(self):
+        # like asyncio, closing reports the connection as lost to the protocol
+        self.closed += 1
+        self.protocol.connection_lost(None)
+
+    def write(self, data):
+        self.written.append(bytes(data))
+
+
 @pytest.mark.asyncio
-async def test_second_connection_rejected(_LOGGER):
+async def test_second_connection_replaces_transport(_LOGGER):
     """
-    the instance is its own protocol factory, but only hands itself out while no
-    socket is attached: a second connection must not steal the live transport.
+    a reconnecting ISM8 takes over from the socket it replaces: the old socket is
+    dropped, and its connection_lost() must not tear down the new connection.
     Uses a fresh instance because the module-scoped fixture is shared.
     """
-    ism8 = wolf.Ism8()
+    ism8 = wolf.Ism8(watchdog_timeout=None)
+    fired = []
+    ism8.register_disconnect_callback(lambda: fired.append("lost"))
+    ism8.register_callback(lambda: fired.append("dp"), 4)
+
+    first = _StubTransport(ism8)
+    ism8.connection_made(first)
     assert ism8() is ism8
-    ism8._transport = object()  # pretend a client is attached
-    assert ism8() is not ism8
+    assert ism8.connected() is True
+
+    second = _StubTransport(ism8)
+    ism8.connection_made(second)
+
+    # the previous socket was detached from the protocol and aborted
+    assert first.aborted == 1
+    assert first.protocol is not ism8
+    # the new connection owns the state, untouched by the stale connection_lost
+    assert ism8._transport is second
+    assert ism8.connected() is True
+    # no fan-out: flapping every entity unavailable would churn HA for nothing
+    assert fired == []
+
+    # a superseded socket still delivering bytes must not ACK onto the new socket
+    first.protocol.data_received(
+        b"\x06\x20\xf0\x80\x00\x16\x04\x00\x00\x00\xf0\x06\x00\xb2\x00\x01\x00\xb2\x03\x02\x02\x62"
+    )
+    assert second.written == []
 
 
 @pytest.mark.asyncio
@@ -338,7 +392,8 @@ async def test_post_processing(tst_ism8: wolf.Ism8, _LOGGER, caplog):
     assert tst_ism8._dp_values[166] == 140
 
 
-def test_heat_generator_type(tst_ism8: wolf.Ism8, _LOGGER):
+@pytest.mark.asyncio
+async def test_heat_generator_type(tst_ism8: wolf.Ism8, _LOGGER):
     """
     checks decoding of the BM-2 appliance type datapoints (manual 8.7.9).
     IDs 357/359/360/361 carry one appliance code each, not a bitfield.
@@ -363,8 +418,12 @@ def test_heat_generator_type(tst_ism8: wolf.Ism8, _LOGGER):
     assert tst_ism8.get_value_range(357).count("CGB-2 38/55") == 1
     assert "Kein Heizgeraet" in tst_ism8.get_value_range(361)
 
+    # data_received() armed the watchdog; no timer may outlive the test
+    tst_ism8._stop_watchdog()
 
-def test_bitfield_decoding(tst_ism8: wolf.Ism8, _LOGGER):
+
+@pytest.mark.asyncio
+async def test_bitfield_decoding(tst_ism8: wolf.Ism8, _LOGGER):
     """
     checks decoding of the BM-2 presence bitfields (manual 8.7.6 - 8.7.8)
     """
@@ -390,6 +449,9 @@ def test_bitfield_decoding(tst_ism8: wolf.Ism8, _LOGGER):
         "Heizgeraet 1",
         "Solarmodul",
     )
+
+    # data_received() armed the watchdog; no timer may outlive the test
+    tst_ism8._stop_watchdog()
     # bits Wolf documents as "Nicht relevant" are skipped
     assert tst_ism8.decode_bitfield(355, 0x0001) == ()
     assert tst_ism8.decode_bitfield(356, 0x0840) == ("CWL Excellent", "BM-2 / System")
@@ -459,33 +521,75 @@ def test_watchdog_expiry_without_transport_notifies():
     assert ism8.connected() is False
 
 
-def test_close_detaches_callbacks():
-    """close() must leave nothing for connection_lost() to fire."""
-    closed = []
-
-    class _Transport:
-        def close(self):
-            closed.append(1)
-
-    ism8 = wolf.Ism8()
+@pytest.mark.asyncio
+async def test_close_keeps_callbacks_until_unregistered(_LOGGER):
+    """close() shuts the transport down but detaches nothing: the caller owns its
+    callbacks, and unregistering them is what silences the disconnect fan-out."""
+    ism8 = wolf.Ism8(watchdog_timeout=None)
     fired = []
     ism8.register_connection_callback(lambda ip: fired.append(ip))
     ism8.register_disconnect_callback(lambda: fired.append("lost"))
     ism8.register_callback(lambda: fired.append("dp"), 4)
-    ism8._transport = _Transport()  # pretend a client is attached
+
+    transport = _StubTransport(ism8)
+    ism8.connection_made(transport)
+    assert ism8.connected() is True
+    assert fired == ["127.0.0.1"]
 
     ism8.close()
 
-    assert ism8._callback_on_connection is None
-    assert ism8._callback_on_disconnect is None
-    assert ism8._callback_on_data == {}
+    # the transport is gone and the protocol reports disconnected synchronously
+    assert transport.closed == 1
     assert ism8._transport is None
     assert ism8.connected() is False
-    assert closed == [1]
-    # idempotent
+    # ... while every callback slot is left untouched
+    assert ism8._callback_on_connection is not None
+    assert ism8._callback_on_disconnect is not None
+    assert 4 in ism8._callback_on_data
+    # the connection_lost that close() triggers still runs the fan-out
+    assert fired == ["127.0.0.1", "dp", "lost"]
+
+    # idempotent: no second close, no second fan-out
     ism8.close()
+    assert transport.closed == 1
+    assert fired == ["127.0.0.1", "dp", "lost"]
+
+    # unregistering first is what silences teardown - on this and any other path
+    ism8.unregister_connection_callback()
+    ism8.unregister_disconnect_callback()
+    ism8.remove_callback(4)
+    fired.clear()
+
+    second = _StubTransport(ism8)
+    ism8.connection_made(second)  # connection callback already gone
+    ism8.close()
+
+    assert second.closed == 1
     assert fired == []
-    assert closed == [1]
+
+
+def test_disconnect_callback_may_close():
+    """A datapoint callback that tears the protocol down while connection_lost()
+    iterates the registry must neither break that iteration nor re-enter it."""
+    ism8 = wolf.Ism8(watchdog_timeout=None)
+    calls = []
+
+    def tear_down():
+        calls.append("teardown")
+        ism8.close()
+
+    ism8.register_callback(tear_down, 4)
+    ism8.register_callback(lambda: calls.append("other"), 5)
+
+    transport = _StubTransport(ism8)
+    ism8.connection_made(transport)
+    ism8.connection_lost(None)
+
+    # both callbacks ran: close() leaves the registry alone, the snapshot protects it
+    assert sorted(calls) == ["other", "teardown"]
+    # connection_lost() dropped the transport before the fan-out, so the close()
+    # from inside a callback finds nothing and cannot re-enter this method
+    assert transport.closed == 0
 
 
 @pytest.fixture(scope="module")

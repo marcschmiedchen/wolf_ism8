@@ -32,11 +32,18 @@ from .ism8_helper_functions import (
 )
 
 
-class _RejectConnection(asyncio.Protocol):
-    """Closes a connection that arrives while the ISM8 socket is in use."""
+class _DiscardConnection(asyncio.Protocol):
+    """Absorbs the connection_lost() of a socket that a newer connection replaced,
+    so the singleton protocol is not torn down by the stale one."""
 
     def connection_made(self, transport) -> None:
-        transport.close()
+        pass
+
+    def data_received(self, data) -> None:
+        pass
+
+    def connection_lost(self, exc) -> None:
+        pass
 
 
 class Ism8(asyncio.Protocol):
@@ -122,30 +129,21 @@ class Ism8(asyncio.Protocol):
         no periodic data while idle)."""
         # the datapoint-values from the device are stored and buffered here
         self._dp_values = {}
+        # consecutive jump-filter discards per datapoint (see postprocess_data)
         self._dp_discard_count = {}
         self._transport = None
         self._remote_ip_address = None
         self._connected = False
         self.log = logging.getLogger(__name__)
-        # the callbacks for all datapoints are stored in a dictionary
+        # callbacks for updates, connection made/lost
         self._callback_on_data = {}
-        # its possible to register a callback once the connection is established
         self._callback_on_connection = None
-        # called when the connection is lost (either by ISM8 or by the watchdog)
         self._callback_on_disconnect = None
-        # no loop is touched here: the protocol may be instantiated outside a
-        # running loop (e.g. at module level in tests)
         self._watchdog_timeout = watchdog_timeout
         self._watchdog_handle = None
 
     def __call__(self):
-        """asyncio protocol factory. The ISM8 keeps a single socket, so a second
-        connection is rejected instead of overwriting the live transport."""
-        if self._transport is not None:
-            self.log.warning(
-                "Connection while ISM8 socket is already in use: rejecting"
-            )
-            return _RejectConnection()
+        """asyncio protocol factory."""
         return self
 
     def get_remote_ip_address(self):
@@ -163,6 +161,7 @@ class Ism8(asyncio.Protocol):
 
     def connection_made(self, transport) -> None:
         """is called as soon as an ISM8 connects to server"""
+        self._reap_previous_transport()
         self._transport = transport
         self._connected = True
         self._remote_ip_address = transport.get_extra_info("peername")[0]
@@ -171,41 +170,39 @@ class Ism8(asyncio.Protocol):
         if self._callback_on_connection is not None:
             self._callback_on_connection(self._remote_ip_address)
 
+    def _reap_previous_transport(self) -> None:
+        """Drop a socket that a reconnecting ISM8 has replaced. Detaching the
+        protocol first keeps its deferred connection_lost() - and any bytes it
+        still delivers - from hitting the connection that took its place."""
+        old = self._transport
+        if old is None:
+            return
+        self.log.info(
+            "ISM8 (%s) reconnected, dropping the previous socket",
+            self._remote_ip_address,
+        )
+        old.set_protocol(_DiscardConnection())
+        old.abort()
+
     def connection_lost(self, exc):
-        """
-        Is called when connection ends. closes socket.
-        """
+        """Is called when connection ends. updates datapoints last time."""
         self.log.debug("ISM8 closed the connection. Stopping")
         self._connected = False
         self._stop_watchdog()
-        if self._transport:
-            self._transport.close()
-            self._transport = None
-        self._notify_lost()
-
-    def _notify_lost(self) -> None:
-        """fire every datapoint callback one last time so receivers can mark the
-        values as stale/unavailable now that the ISM8 is gone, then the disconnect
-        callback. Every path that loses a connection must come through here."""
-        for cb in self._callback_on_data.values():
+        # asyncio only calls us once the socket is already gone: drop the handle
+        # so nothing can write into it and close() sees a clean state
+        self._transport = None
+        # snapshot: a callback may unregister itself or call close() while running
+        for cb in list(self._callback_on_data.values()):
             cb()
         if self._callback_on_disconnect is not None:
             self._callback_on_disconnect()
 
     def _restart_watchdog(self) -> None:
-        """
-        (re)arms the inactivity watchdog. Called whenever data is received or a
-        connection is established.
-        """
+        """(re)arms the inactivity watchdog whenever data is received"""
         if self._watchdog_timeout is None:
             return
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # no loop: data_received() was called synchronously, e.g. from a test.
-            # Such a call cannot belong to a live connection, so there is nothing
-            # to guard: skip instead of raising.
-            return
+        loop = asyncio.get_running_loop()
         self._stop_watchdog()
         self._watchdog_handle = loop.call_later(
             self._watchdog_timeout, self._on_watchdog_expired
@@ -218,9 +215,7 @@ class Ism8(asyncio.Protocol):
             self._watchdog_handle = None
 
     def _on_watchdog_expired(self) -> None:
-        """
-        No data received for watchdog_timeout seconds => Abort the transport
-        Asyncio then calls connection_lost()"""
+        """stale connection => Abort the transport. Asyncio calls connection_lost()"""
         self._watchdog_handle = None
         self.log.info(
             "No data from ISM8 (%s) for %ss. Assuming connection lost.",
@@ -230,10 +225,9 @@ class Ism8(asyncio.Protocol):
         if self._transport is not None:
             self._transport.abort()
         else:
-            # transport vanished already - asyncio will not call connection_lost(),
-            # so take the same teardown path here
-            self._connected = False
-            self._notify_lost()
+            # no transport left, so asyncio will never call connection_lost():
+            # take that path directly, otherwise _connected stays True forever
+            self.connection_lost(None)
 
     def register_callback(self, cb, dp_nbr):
         """registers a callback for a datapoint; is called when data is received"""
@@ -249,20 +243,25 @@ class Ism8(asyncio.Protocol):
         if self._connected:
             self._callback_on_connection(self._remote_ip_address)
 
+    def unregister_connection_callback(self) -> None:
+        """drops the connection callback"""
+        self._callback_on_connection = None
+
     def register_disconnect_callback(self, cb):
         """registers a callback for a lost connection; is called on connection_lost,
         which includes a watchdog expiry (see _on_watchdog_expired)"""
         self._callback_on_disconnect = cb
 
-    def close(self) -> None:
-        """Shutdown: stop the watchdog, detach all callbacks and drop the transport.
-        Call this before the asyncio server drops its clients: close_clients() makes
-        asyncio call connection_lost(), which would otherwise fire into a caller that
-        is already torn down."""
-        self._stop_watchdog()
-        self._callback_on_connection = None
+    def unregister_disconnect_callback(self) -> None:
+        """drops the disconnect callback"""
         self._callback_on_disconnect = None
-        self._callback_on_data.clear()
+
+    def close(self) -> None:
+        """Explicit shutdown: stop the watchdog, close the transport and report
+        disconnected. The deferred connection_lost() still fires the callbacks -
+        the caller owns them, and unregistering what it no longer wants *before*
+        tearing down is what silences the fan-out on every path."""
+        self._stop_watchdog()
         if self._transport is not None:
             self._transport.close()
             self._transport = None
