@@ -409,6 +409,33 @@ async def test_jump_filter_setpoints(tst_ism8: wolf.Ism8, _LOGGER):
 
 
 @pytest.mark.asyncio
+async def test_invalid_mantissa(tst_ism8: wolf.Ism8, _LOGGER):
+    """
+    An all-ones mantissa (0x7FF) means invalid data per WOLF specs, so
+    decode_float returns None. postprocess_data must drop such values instead of
+    comparing None against the range/jump limits (which raised a TypeError and
+    aborted the whole asyncio read callback).
+    """
+    invalid = bytearray(b"\x07\xff")
+
+    # dp 4: measured temperature (jump filter), dp 197: same
+    for dp_id in (4, 197):
+        tst_ism8._dp_values.pop(dp_id, None)
+        assert tst_ism8.decode_datapoint(dp_id, invalid) is False
+        assert dp_id not in tst_ism8._dp_values
+
+    # dp 364: setpoint, goes through the plausibility window
+    tst_ism8._dp_values.pop(364, None)
+    assert tst_ism8.decode_datapoint(364, invalid) is False
+    assert 364 not in tst_ism8._dp_values
+
+    # dp 147: DPT_Power, max-range check
+    tst_ism8._dp_values.pop(147, None)
+    assert tst_ism8.decode_datapoint(147, invalid) is False
+    assert 147 not in tst_ism8._dp_values
+
+
+@pytest.mark.asyncio
 async def test_post_processing(tst_ism8: wolf.Ism8, _LOGGER, caplog):
     # decoding tests
     caplog.set_level(logging.DEBUG)

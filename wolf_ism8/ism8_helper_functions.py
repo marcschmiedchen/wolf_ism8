@@ -24,18 +24,29 @@ log = logging.getLogger(__name__)
 
 MAX_DISCARDS = 2
 JUMP_FILTER_DELTA = 20
-_JUMP_FILTER_TYPES = frozenset(("DPT_Value_Temp", "DPT_Value_Tempd", "DPT_Tempd"))
-# setpoints legitimately jump (e.g. 5°C in standby -> 58°C on demand), so the
-# jump filter only applies to measured temperatures
-_JUMP_FILTER_EXEMPT = frozenset(
-    dp_id
+
+
+# dp_id -> (jump_filter, min_range, max_range). Datapoints without any filter are
+# not listed. Setpoints legitimately jump (5°C standby -> 58°C on demand), so they
+# get a plausibility window instead of the jump filter. The name test is a
+# heuristic: a setpoint without "soll"/"vorgabe" in its name gets the jump filter.
+def _filter_for(props):
+    dp_type, name = props[IX_TYPE], props[IX_NAME].lower()
+    if dp_type == "DPT_Power":
+        return False, -float("inf"), 1000.0
+    if dp_type == "DPT_FlowRate_m3/h":
+        return False, -float("inf"), 10000000.0
+    if any(key in name for key in ("soll", "vorgabe")):
+        return False, -30.0, 120.0
+    return True, -float("inf"), float("inf")
+
+
+FILTER_CONFIG = {
+    dp_id: _filter_for(props)
     for dp_id, props in DATAPOINTS.items()
-    if props[IX_TYPE] in _JUMP_FILTER_TYPES
-    and any(key in props[IX_NAME].lower() for key in ("soll", "vorgabe"))
-)
-# setpoints skip the jump filter, so garbage values (e.g. -218.4) would pass:
-# keep a plain plausibility window for them instead
-SETPOINT_RANGE = (-30.0, 120.0)
+    if props[IX_TYPE]
+    in ("DPT_Value_Temp", "DPT_Tempd", "DPT_Power", "DPT_FlowRate_m3/h")
+}
 
 
 def decode_dict(mode_number: int, mode_dic: dict) -> str | None:
@@ -256,19 +267,22 @@ def postprocess_data(self, dp_id, dp_type, value):
     """
     post-processing for complex problems
     """
-    # sometimes there are unreasonably high power values -> drop them.
-    if dp_type == "DPT_Power" and value > 1000:
-        self.log.debug("discarding %s, out of range", value)
+    # decoders return None for invalid data (e.g. all-ones mantissa); the range
+    # and jump checks below compare numerically, so bail out first.
+    if value is None:
+        return None
+
+    # range check: unreasonably high power / flow rate values, and setpoints
+    # outside their plausibility window -> drop them.
+    jump_filter, min_range, max_range = FILTER_CONFIG.get(dp_id, (False, None, None))
+    if min_range is not None and not min_range <= value <= max_range:
+        self.log.debug("discarding %s for dp %d, out of range", value, dp_id)
         return None
 
     # jump filter: discard temperature values that jump more than JUMP_FILTER_DELTA.
     # after MAX_DISCARDS consecutive discards, accept unconditionally (cache reset).
     cached = self._dp_values.get(dp_id)
-    if dp_id in _JUMP_FILTER_EXEMPT:
-        if not SETPOINT_RANGE[0] <= value <= SETPOINT_RANGE[1]:
-            self.log.debug("discarding setpoint %s for dp %d, out of range", value, dp_id)
-            return None
-    elif dp_type in _JUMP_FILTER_TYPES and cached is not None:
+    if jump_filter and cached is not None:
         if abs(value - cached) > JUMP_FILTER_DELTA:
             count = self._dp_discard_count.get(dp_id, 0) + 1
             if count <= MAX_DISCARDS:
@@ -284,16 +298,11 @@ def postprocess_data(self, dp_id, dp_type, value):
                 return None
         self._dp_discard_count.pop(dp_id, None)
 
-    # sometimes there are unreasonably high Flow Rates -> drop them.
-    if dp_type == "DPT_FlowRate_m3/h":
-        if value > 10000000:
-            self.log.debug("discarding %s, out of range", value)
-            return None
-        # sometimes there are unreasonably LOW Flow Rates. Was reported as an issue
-        # starting with FW 1.9. Seems the scaling factor is "1" in this case
-        # so values between 0.1ccm/h and 1000ccm/h are assumed to be unscaled.
-        # Bigger values get scaled down the official way(times 0.0001)
-        if value > 1000:
-            return value * 0.0001
+    # sometimes there are unreasonably LOW Flow Rates. Was reported as an issue
+    # starting with FW 1.9. Seems the scaling factor is "1" in this case
+    # so values between 0.1ccm/h and 1000ccm/h are assumed to be unscaled.
+    # Bigger values get scaled down the official way(times 0.0001)
+    if dp_type == "DPT_FlowRate_m3/h" and value > 1000:
+        return value * 0.0001
 
     return value
