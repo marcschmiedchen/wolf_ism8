@@ -4,6 +4,69 @@ Received datagrams are translated to python datatypes and held in a internal dic
 
 This python package was built in order to integrate a [WOLF](https://www.wolf.eu) heating system into the [Home Assistant](https://www.home-assistant.io) ecosystem. The library takes advantage of the ASYNCIO-Library.
 
+### Usage
+
+`Ism8` is the asyncio protocol *and* its own factory. The ISM8 module dials in, so
+the caller only starts a server and hands the instance over:
+
+```python
+import asyncio
+from wolf_ism8 import Ism8
+
+ism8 = Ism8()
+ism8.set_watchdog_timeout(60)
+await asyncio.get_running_loop().create_server(ism8, port=12004)
+```
+
+Nothing is pushed until the ISM8 dials in, so ask for the initial values from the
+connection callback, which fires with the device IP:
+
+```python
+def on_connect(ip):
+    print(f"ISM8 connected: {ip}")
+    ism8.request_all_datapoints()
+
+ism8.register_connection_callback(on_connect)
+```
+
+#### Reading values
+
+`register_callback(cb, dp_id)` subscribes to one datapoint. The callback takes no
+arguments — read the value with `read_sensor(dp_id)`, which serves the last cached
+value and keeps it across disconnects:
+
+```python
+def on_boiler_temp():
+    print(ism8.read_sensor(4))
+
+ism8.register_callback(on_boiler_temp, 4)
+# ...
+ism8.remove_callback(4)
+```
+
+For building entity lists, `get_all_sensors()` returns the datapoint table itself
+(`dp_id → (device_name, datapoint_name, data_type, writable_flag)`) and
+`get_all_devices()` the sorted device names. `connected()` and
+`get_remote_ip_address()` report the link state.
+
+#### Writing values
+
+`send_dp_value(dp_id, value)` validates the value against the datapoint's allowed
+range, encodes it and sends it. It returns `False` and logs if the datapoint is not
+writable, the value is out of range, or the link is down.
+
+```python
+ism8.send_dp_value(4, 42.0)
+```
+
+#### Helpers
+
+Some BM-2 datapoints report which appliances or circuits exist as one bit per
+component: `is_bitfield(dp_id)` tells whether a datapoint is one of these and
+`decode_bitfield(dp_id, value)` returns the names of the components present.
+`first_fw_version(dp_id)` gives the minimum ISM8 firmware version a datapoint
+exists in, so an integration can hide datapoints an older device never sends.
+
 ### Connection callbacks
 
 `register_connection_callback(cb)` is called with the device IP when the ISM8
